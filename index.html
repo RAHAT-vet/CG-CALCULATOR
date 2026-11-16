@@ -1,0 +1,2079 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart AI & OCR CGPA Calculator (UGC 4.00 & SSC/HSC 5.00)</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Vercel Speed Insights & Web Analytics -->
+    <script>
+        window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
+        window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+    </script>
+    <script defer src="/_vercel/insights/script.js"></script>
+    <script defer src="/_vercel/speed-insights/script.js"></script>
+
+    <!-- Tesseract.js (Offline/Browser Fallback OCR Engine) -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+    <!-- Google Fonts: Hind Siliguri & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Hind Siliguri"', '"Inter"', 'sans-serif'],
+                        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #64748b; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- ================= TOP HEADER ================= -->
+    <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-0 sm:h-16 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5 min-w-0">
+                <div class="min-w-0">
+                    <h1 class="text-lg sm:text-2xl font-extrabold tracking-tight flex items-center gap-2.5 truncate text-white">
+                        <span class="truncate">CGPA / GPA Calculator</span>
+                        <span id="header-scale-badge" class="hidden sm:inline-block text-[11px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full shrink-0">UGC 4.00 Scale</span>
+                    </h1>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+                <button id="ai-settings-btn" type="button" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs sm:text-sm font-semibold px-3 py-2 rounded-xl transition cursor-pointer">
+                    🤖 AI ইঞ্জিন
+                </button>
+                <button id="grade-scale-btn" type="button" class="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs sm:text-sm font-bold px-4 py-2 rounded-xl shadow-md shadow-indigo-500/25 transition cursor-pointer">
+                    গ্রেড স্কেল এডিট
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ================= MAIN CONTAINER ================= -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 space-y-5">
+
+        <!-- SYSTEM SWITCHER BAR: UNIVERSITY (4.00) vs SCHOOL/COLLEGE SSC/HSC (5.00) -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-3 shadow-sm flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-slate-700">🎓 শিক্ষা স্তর / স্কেল:</span>
+                <div class="bg-slate-100 p-1 rounded-xl border border-slate-200 flex gap-1">
+                    <button type="button" data-edu-system="university" class="edu-sys-btn active px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-xs transition cursor-pointer">
+                        বিশ্ববিদ্যালয় (CGPA • 4.00)
+                    </button>
+                    <button type="button" data-edu-system="school" class="edu-sys-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition cursor-pointer">
+                        স্কুল / কলেজ SSC/HSC (GPA • 5.00)
+                    </button>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-slate-500">
+                <span id="edu-system-hint">ক্রেডিট-ভিত্তিক ওয়েটেড CGPA হিসাব চালু আছে</span>
+            </div>
+        </div>
+
+        <!-- TOP UPLOAD + COMPACT LIVE CGPA DASHBOARD GRID -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+
+            <!-- Left: Compact Image Upload & Queue (5 Cols) -->
+            <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between space-y-3">
+                <div class="space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-sm font-bold text-slate-900">রেজাল্ট শিট / মার্কশিটের ছবি দিন</h2>
+                        <span class="text-[11px] font-semibold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-100">Ctrl+V পেস্ট</span>
+                    </div>
+
+                    <!-- Dropzone -->
+                    <label id="result-dropzone" for="result-file-input" class="border-2 border-dashed border-indigo-300 hover:border-indigo-600 bg-indigo-50/30 hover:bg-indigo-50/70 rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[130px]">
+                        <input id="result-file-input" type="file" accept="image/*" multiple class="hidden">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center mb-1.5 shadow-sm">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                        </div>
+                        <p class="text-xs sm:text-sm font-bold text-slate-800">ছবি সিলেক্ট করুন বা এখানে ড্র্যাগ করুন</p>
+                        <p class="text-[11px] text-slate-500 mt-0.5">এক বা একাধিক সেমিস্টার/মার্কশিট • অথবা <strong class="text-indigo-600">Ctrl+V</strong></p>
+                    </label>
+
+                    <!-- Processing Progress Bar -->
+                    <div id="ocr-progress-wrap" class="hidden bg-indigo-50 border border-indigo-200 rounded-xl p-2.5 space-y-1">
+                        <div class="flex items-center justify-between text-xs font-bold text-indigo-950">
+                            <span id="ocr-progress-label" class="flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-indigo-600 animate-ping"></span>
+                                AI টেবিল বিশ্লেষণ করছে...
+                            </span>
+                            <span id="ocr-progress-pct" class="font-mono text-indigo-700">0%</span>
+                        </div>
+                        <div class="w-full bg-indigo-200/70 rounded-full h-1.5 overflow-hidden">
+                            <div id="ocr-progress-bar" class="bg-indigo-600 h-1.5 transition-all duration-200" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Uploaded Image Thumbnails Strip -->
+                    <div id="uploaded-thumbs-wrap" class="hidden space-y-1">
+                        <span class="text-[11px] font-bold text-slate-500 block">আপলোডকৃত শিটসমূহ:</span>
+                        <div id="uploaded-thumbs-list" class="flex flex-wrap gap-1.5"></div>
+                    </div>
+                </div>
+
+                <!-- Sample Demo Loader & Clear Button -->
+                <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                    <button id="load-sample-btn" type="button" class="text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-xl border border-indigo-200 transition cursor-pointer">
+                        ✨ নমুনা রেজাল্ট টেস্ট
+                    </button>
+                    <button id="clear-all-btn" type="button" class="text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 px-2.5 py-1.5 rounded-xl border border-rose-200 transition cursor-pointer">
+                        সব মুছুন
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right: Compact Live CGPA Scoreboard & Filter Controls (7 Cols) -->
+            <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm flex flex-col justify-between space-y-3.5">
+                
+                <!-- Filter Mode Switcher (University Modes vs School Optional Rule) -->
+                <div id="uni-mode-bar" class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <span class="text-xs font-bold text-slate-700">হিসাবের ধরন:</span>
+                    <div class="bg-slate-100 p-1 rounded-xl border border-slate-200 flex flex-wrap gap-1">
+                        <button type="button" data-calc-mode="all" class="calc-mode-btn active px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-xs transition cursor-pointer">
+                            সব কোর্স (All)
+                        </button>
+                        <button type="button" data-calc-mode="theoretical" class="calc-mode-btn px-2.5 py-1 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition cursor-pointer">
+                            শুধু Theoretical
+                        </button>
+                        <button type="button" data-calc-mode="sessional" class="calc-mode-btn px-2.5 py-1 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition cursor-pointer">
+                            শুধু Sessional
+                        </button>
+                    </div>
+                </div>
+
+                <!-- School/College Mode Info Bar (Shown when School/College 5.00 Scale is active) -->
+                <div id="school-mode-bar" class="hidden flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 bg-emerald-50/60 px-3 py-2 rounded-xl border border-emerald-200/70">
+                    <div class="text-xs text-emerald-950 font-semibold">
+                        🏫 বোর্ড নিয়ম: আবশ্যিক বিষয়ের গড় + <strong>৪র্থ বিষয় (4th Subject)</strong>-এর <code>(GP - 2.00)</code> বোনাস যোগ হবে (সর্বোচ্চ ৫.০০)।
+                    </div>
+                    <label class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 cursor-pointer">
+                        <input id="school-fail-lock-chk" type="checkbox" checked class="w-3.5 h-3.5 accent-emerald-600 rounded">
+                        <span>আবশ্যিক বিষয়ে F থাকলে GPA 0.00</span>
+                    </label>
+                </div>
+
+                <!-- Compact Hero CGPA + Stats Strip -->
+                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-stretch">
+                    <div class="sm:col-span-5 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 text-white rounded-2xl p-4 flex flex-col items-center justify-center text-center shadow-lg shadow-indigo-500/25 min-h-[116px]">
+                        <span id="cgpa-mode-badge" class="text-[10px] font-semibold bg-white/15 px-2.5 py-0.5 rounded-full mb-1">সব কোর্স (All)</span>
+                        <div class="text-5xl sm:text-6xl font-mono font-black tracking-tight text-white drop-shadow-sm" id="hero-cgpa-value">0.00</div>
+                        <span id="hero-scale-caption" class="text-[11px] text-indigo-100 mt-1">অর্জিত CGPA (৪.০০ স্কেলে)</span>
+                    </div>
+
+                    <!-- 4 Compact Breakdown Cards -->
+                    <div class="sm:col-span-7 grid grid-cols-2 gap-2.5">
+                        <div class="bg-slate-50 border border-slate-200/90 rounded-xl p-2.5">
+                            <span id="stat-box1-title" class="text-[11px] text-slate-500 block">হিসাবকৃত মোট ক্রেডিট</span>
+                            <strong id="stat-total-credits" class="text-base font-mono font-bold text-slate-900 block">0.00</strong>
+                            <span id="stat-subject-count" class="text-[10px] text-indigo-600 font-medium">০টি সাবজেক্ট</span>
+                        </div>
+                        <div class="bg-slate-50 border border-slate-200/90 rounded-xl p-2.5">
+                            <span id="stat-box2-title" class="text-[11px] text-slate-500 block">মোট গ্রেড পয়েন্ট</span>
+                            <strong id="stat-total-points" class="text-base font-mono font-bold text-emerald-700 block">0.00</strong>
+                            <span id="stat-box2-sub" class="text-[10px] text-slate-400">মোট পয়েন্ট যোগফল</span>
+                        </div>
+                        <div id="stat-box3-wrap" class="bg-indigo-50/60 border border-indigo-100 rounded-xl p-2.5">
+                            <span id="stat-box3-title" class="text-[11px] text-indigo-800 block">শুধু Theoretical GPA</span>
+                            <strong id="stat-theory-gpa" class="text-sm font-mono font-bold text-indigo-950 block">0.00</strong>
+                            <span id="stat-theory-credits" class="text-[10px] text-indigo-600">0.00 ক্রেডিট</span>
+                        </div>
+                        <div id="stat-box4-wrap" class="bg-emerald-50/60 border border-emerald-100 rounded-xl p-2.5">
+                            <span id="stat-box4-title" class="text-[11px] text-emerald-800 block">শুধু Sessional GPA</span>
+                            <strong id="stat-sessional-gpa" class="text-sm font-mono font-bold text-emerald-950 block">0.00</strong>
+                            <span id="stat-sessional-credits" class="text-[10px] text-emerald-600">0.00 ক্রেডিট</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Optional Options & Export Actions (Including High-Res PNG Scorecard Download) -->
+                <div class="pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                    <label id="exclude-f-wrap" class="inline-flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-slate-700 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200">
+                        <input id="exclude-f-chk" type="checkbox" class="w-3.5 h-3.5 accent-indigo-600 rounded cursor-pointer">
+                        <span>F (0.00) গ্রেড বাদ দিন</span>
+                    </label>
+
+                    <div class="flex flex-wrap items-center gap-1.5 ml-auto">
+                        <button id="download-png-btn" type="button" class="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white text-xs font-bold px-3.5 py-1.5 rounded-xl shadow-sm shadow-orange-500/20 cursor-pointer transition">
+                            কার্ড ডাউনলোড
+                        </button>
+                        <button id="copy-summary-btn" type="button" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs cursor-pointer">
+                            কপি
+                        </button>
+                        <button id="export-csv-btn" type="button" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs cursor-pointer">
+                            CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= EXTRACTED & EDITABLE COURSES TABLE ================= -->
+        <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70">
+                <div>
+                    <h3 class="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+                        <span>শনাক্তকৃত কোর্স ও গ্রেড তালিকা (Editable Table)</span>
+                        <span id="table-row-badge" class="text-xs font-mono bg-slate-900 text-white px-2.5 py-0.5 rounded-full">0</span>
+                    </h3>
+                    <p class="text-xs text-slate-500">যেকোনো ক্রেডিট, গ্রেড বা পয়েন্ট ভুল মনে হলে সরাসরি এখান থেকে পরিবর্তন করতে পারবেন</p>
+                </div>
+            </div>
+
+            <!-- OCR Verification Reminder Banner (Shown after image scan) -->
+            <div id="ocr-verify-banner" class="hidden bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center justify-between gap-2 text-xs text-amber-950">
+                <div class="flex items-center gap-2 font-semibold">
+                    <span class="inline-block w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
+                    <span>⚠️ ছবি থেকে তথ্য নেওয়ার সময় ছোটখাটো মিস্টেক হতে পারে—অনুগ্রহ করে নিচের টেবিলে আপনার <strong>ক্রেডিট</strong> ও <strong>গ্রেড (LG)</strong> ঠিক আছে কি না একবার চেক করে নিন।</span>
+                </div>
+                <button id="dismiss-verify-banner" type="button" class="text-amber-800 hover:text-amber-950 font-bold px-2 py-0.5 rounded cursor-pointer shrink-0">✕</button>
+            </div>
+
+            <div class="overflow-x-auto max-h-[540px] overflow-y-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="sticky top-0 z-10 shadow-xs">
+                        <tr id="courses-table-head-row" class="bg-slate-900 text-white text-[11px] sm:text-xs uppercase tracking-wider">
+                            <th class="py-3 px-3 sm:px-4 font-semibold w-12 bg-slate-900">#</th>
+                            <th class="py-3 px-3 sm:px-4 font-semibold bg-slate-900">Course Code <span class="text-[10px] font-normal text-slate-400 normal-case">(Optional)</span></th>
+                            <th class="py-3 px-3 sm:px-4 font-semibold bg-slate-900">Course Name <span class="text-[10px] font-normal text-slate-400 normal-case">(Optional)</span></th>
+                            <th class="py-3 px-3 sm:px-4 font-semibold w-32 bg-slate-900 text-amber-300" id="th-col-credit">Credit</th>
+                            <th class="py-3 px-3 sm:px-4 font-semibold w-36 bg-slate-900" id="th-col-type">Type</th>
+                            <th class="py-3 px-3 sm:px-4 font-semibold w-28 bg-slate-900" id="th-col-status">Status</th>
+                            <th class="py-3 px-3 sm:px-4 font-semibold w-32 bg-slate-900 text-amber-300">Grade (LG)</th>
+                            <th class="py-3 px-3 sm:px-4 font-semibold w-24 bg-slate-900">GP</th>
+                            <th class="py-3 px-3 sm:px-4 font-semibold w-28 bg-slate-900" id="th-col-points">Points</th>
+                            <th class="py-3 px-3 sm:px-4 font-semibold text-right w-16 bg-slate-900">মুছুন</th>
+                        </tr>
+                    </thead>
+                    <tbody id="courses-table-body" class="divide-y divide-slate-200 text-xs sm:text-sm">
+                        <tr>
+                            <td colspan="10" class="py-10 text-center space-y-3">
+                                <p class="text-slate-400 text-xs">এখনো কোনো রেজাল্ট শিটের ছবি দেওয়া হয়নি। উপরে রেজাল্ট শিটের ছবি আপলোড করুন অথবা নিচের বাটনে ক্লিক করে সাবজেক্ট যোগ করুন।</p>
+                                <button id="add-manual-row-btn" type="button" class="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-indigo-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition cursor-pointer">
+                                    <span>+ নতুন সাবজেক্ট যোগ করুন</span>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <!-- Sticky Total Footer Row -->
+                    <tfoot id="courses-table-foot" class="sticky bottom-0 z-10 bg-slate-900 text-white font-mono text-xs sm:text-sm font-bold shadow-inner">
+                        <tr class="border-t-2 border-slate-700">
+                            <td colspan="3" class="py-3 px-4 text-right uppercase tracking-wider text-slate-300" id="footer-label-left">মোট (Total):</td>
+                            <td id="footer-total-credits" class="py-3 px-4 text-indigo-300">0.00</td>
+                            <td colspan="4" class="py-3 px-4 text-right uppercase tracking-wider text-slate-300" id="footer-label-right">মোট পয়েন্ট (Points):</td>
+                            <td id="footer-total-points" class="py-3 px-4 text-emerald-400">0.00</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Hybrid AI Engine Settings Modal (Gemini + ChatGPT + Claude) -->
+    <div id="ai-settings-modal" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-slate-200 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">🤖 Multi-Model Hybrid AI Vision ইঞ্জিন</h3>
+                    <p class="text-[11px] text-slate-500">OCR.Space (ফ্রি বিল্ট-ইন), Gemini, Groq, OpenRouter, ChatGPT বা Claude যুক্ত করুন</p>
+                </div>
+                <button id="close-ai-modal" type="button" class="text-xs font-bold bg-slate-100 hover:bg-rose-100 hover:text-rose-700 text-slate-700 px-2.5 py-1 rounded-lg cursor-pointer">✕</button>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="font-bold text-slate-800 block mb-1">প্রাথমিক AI ইঞ্জিন নির্বাচন করুন:</label>
+                    <select id="ai-provider-select" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-semibold text-slate-800 focus:outline-none focus:border-indigo-500">
+                        <option value="auto">🔄 স্মার্ট হাইব্রিড অটো (Gemini → Groq → OpenRouter Free → OCR.Space → Local)</option>
+                        <option value="ocrspace">🆓 OCR.Space Free Table Engine (কোনো API Key ছাড়াই চলবে)</option>
+                        <option value="groq">⚡ Groq Open-Source Llama Vision (ফ্রি টিয়ার)</option>
+                        <option value="openrouter">🌐 OpenRouter Free Vision (Qwen2.5-VL / Gemma Vision)</option>
+                        <option value="gemini">✨ Google Gemini Vision (gemini-2.5-flash)</option>
+                        <option value="openai">🧠 OpenAI ChatGPT Vision (gpt-4o)</option>
+                        <option value="claude">🎭 Anthropic Claude Vision (claude-3-5-sonnet)</option>
+                        <option value="local">💻 শুধুমাত্র অফলাইন 2.5x Upscaled Table OCR ইঞ্জিন</option>
+                    </select>
+                </div>
+
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2.5 max-h-[300px] overflow-y-auto">
+                    <div>
+                        <label class="font-semibold text-slate-700 block mb-0.5">OCR.Space Free API Key (বিল্ট-ইন ফ্রি কী দেওয়া আছে):</label>
+                        <input id="key-ocrspace" type="text" value="helloworld" placeholder="helloworld বা ফ্রি কী" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="font-semibold text-slate-700 block mb-0.5">Groq Free Open-Source Vision Key (console.groq.com):</label>
+                        <input id="key-groq" type="password" placeholder="gsk_..." class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="font-semibold text-slate-700 block mb-0.5">OpenRouter Free Vision Key (openrouter.ai — ফ্রি মডেল):</label>
+                        <input id="key-openrouter" type="password" placeholder="sk-or-v1-..." class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="font-semibold text-slate-700 block mb-0.5">Google Gemini API Key (ঐচ্ছিক):</label>
+                        <input id="key-gemini" type="password" placeholder="AIzaSy..." class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="font-semibold text-slate-700 block mb-0.5">OpenAI ChatGPT API Key (GPT-4o Vision):</label>
+                        <input id="key-openai" type="password" placeholder="sk-proj-..." class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="font-semibold text-slate-700 block mb-0.5">Anthropic Claude API Key (Claude 3.5 Sonnet):</label>
+                        <input id="key-claude" type="password" placeholder="sk-ant-..." class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button id="save-ai-settings-btn" type="button" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xs cursor-pointer">
+                    সেটিংস সেভ করুন
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Editable Custom Grade Scale Modal (Supports Both 4.00 University & 5.00 School/College) -->
+    <div id="grade-scale-modal" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-slate-200 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                    <h3 id="scale-modal-title" class="text-base font-bold text-slate-900">⚙️ কাস্টম গ্রেড পয়েন্ট স্কেল এডিটর</h3>
+                    <p class="text-[11px] text-slate-500">যেকোনো গ্রেডের পয়েন্ট নিজের বিশ্ববিদ্যালয় বা বোর্ড অনুযায়ী পরিবর্তন করতে পারবেন</p>
+                </div>
+                <button id="close-scale-modal" type="button" class="text-xs font-bold bg-slate-100 hover:bg-rose-100 hover:text-rose-700 text-slate-700 px-2.5 py-1 rounded-lg cursor-pointer">✕</button>
+            </div>
+            <div id="editable-grade-grid" class="grid grid-cols-2 gap-2.5 text-xs font-mono"></div>
+            <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                <button id="reset-grade-scale-btn" type="button" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 px-3 py-2 rounded-xl cursor-pointer">
+                    ↺ ডিফল্ট রিসেট
+                </button>
+                <button id="save-grade-scale-btn" type="button" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xs cursor-pointer">
+                    ✓ গ্রেড স্কেল সেভ করুন
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Lightbox Modal -->
+    <div id="image-lightbox-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-4xl w-full p-4 shadow-2xl border border-slate-200 space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                <h4 id="lightbox-title" class="text-xs sm:text-sm font-bold text-slate-900 truncate">রেজাল্ট শিট প্রিভিউ</h4>
+                <button id="close-lightbox-btn" type="button" class="text-xs font-bold bg-slate-100 hover:bg-rose-100 hover:text-rose-700 text-slate-700 px-3 py-1 rounded-lg cursor-pointer">✕ বন্ধ করুন</button>
+            </div>
+            <div class="bg-slate-100 rounded-xl p-3 flex items-center justify-center max-h-[75vh] overflow-auto">
+                <img id="lightbox-img" src="" alt="Result Sheet" class="max-w-full h-auto rounded-lg shadow">
+            </div>
+        </div>
+    </div>
+
+    <!-- Name Input Modal for 1:1 Square Result Card -->
+    <div id="card-name-modal" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-lg">🎓</div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">রেজাল্ট কার্ডে আপনার নাম লিখুন</h3>
+                        <p class="text-[11px] text-slate-500">১:১ স্কয়ার (1080×1080) হাই-রেজোলিউশন কার্ড তৈরি হবে</p>
+                    </div>
+                </div>
+                <button id="close-card-name-modal" type="button" class="text-xs font-bold bg-slate-100 hover:bg-rose-100 hover:text-rose-700 text-slate-700 px-2.5 py-1 rounded-lg cursor-pointer">✕</button>
+            </div>
+
+            <div class="space-y-2">
+                <label for="card-student-name-input" class="text-xs font-bold text-slate-700 block">শিক্ষার্থীর নাম (ঐচ্ছিক / Optional):</label>
+                <input id="card-student-name-input" type="text" placeholder="যেমন: তানভীর আহমেদ বা Tanvir Ahmed" class="w-full bg-slate-50 border-2 border-slate-200 focus:border-emerald-600 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none transition">
+                <p class="text-[11px] text-slate-500">নাম না লিখতে চাইলে সরাসরি <strong>"স্কিপ ও ডাউনলোড"</strong> বাটনে ক্লিক করুন।</p>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button id="skip-card-name-btn" type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl transition cursor-pointer">
+                    স্কিপ ও ডাউনলোড
+                </button>
+                <button id="confirm-card-download-btn" type="button" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md shadow-emerald-600/20 transition cursor-pointer">
+                    ✨ নামসহ ডাউনলোড করুন
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Safe Footer -->
+    <footer class="mt-8 bg-white/80 border-t border-slate-200/80 py-4 px-4">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-600">
+            <div class="font-bold text-indigo-700">Smart AI & OCR CGPA Calculator</div>
+            <div>যেকোনো বিশ্ববিদ্যালয় ও স্কুল/কলেজ রেজাল্ট শিট থেকে স্বয়ংক্রিয় GPA ও CGPA হিসাব</div>
+        </div>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <div class="bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl border border-slate-700 text-xs sm:text-sm font-medium flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span id="toast-message">সম্পন্ন হয়েছে!</span>
+        </div>
+    </div>
+
+    <script>
+        // ================= DEFAULT & CUSTOMIZABLE GRADE MAPS =================
+        const DEFAULT_UNI_GRADES = {
+            'A+': 4.00,
+            'A':  3.75,
+            'A-': 3.50,
+            'B+': 3.25,
+            'B':  3.00,
+            'B-': 2.75,
+            'C+': 2.50,
+            'C':  2.25,
+            'D':  2.00,
+            'F':  0.00
+        };
+
+        const DEFAULT_SCHOOL_GRADES = {
+            'A+': 5.00,
+            'A':  4.00,
+            'A-': 3.50,
+            'B':  3.00,
+            'C':  2.00,
+            'D':  1.00,
+            'F':  0.00
+        };
+
+        let uniGradePoints = { ...DEFAULT_UNI_GRADES };
+        let schoolGradePoints = { ...DEFAULT_SCHOOL_GRADES };
+
+        try {
+            const savedUni = JSON.parse(localStorage.getItem('cgpa_custom_uni_grades') || 'null');
+            if (savedUni && typeof savedUni === 'object') uniGradePoints = { ...DEFAULT_UNI_GRADES, ...savedUni };
+            const savedSch = JSON.parse(localStorage.getItem('cgpa_custom_school_grades') || 'null');
+            if (savedSch && typeof savedSch === 'object') schoolGradePoints = { ...DEFAULT_SCHOOL_GRADES, ...savedSch };
+        } catch (e) {}
+
+        // State
+        let eduSystem = 'university'; // 'university' (4.00 with credits) | 'school' (5.00 SSC/HSC without credits)
+        let coursesList = [];
+        let calcMode = 'all'; // 'all' | 'theoretical' | 'sessional'
+        let uploadedImages = [];
+
+        function getActiveGradeMap() {
+            return eduSystem === 'school' ? schoolGradePoints : uniGradePoints;
+        }
+
+        function getValidGradesList() {
+            return Object.keys(getActiveGradeMap());
+        }
+
+        // DOM Elements
+        const resultFileInput = document.getElementById('result-file-input');
+        const resultDropzone = document.getElementById('result-dropzone');
+        const ocrProgressWrap = document.getElementById('ocr-progress-wrap');
+        const ocrProgressLabel = document.getElementById('ocr-progress-label');
+        const ocrProgressPct = document.getElementById('ocr-progress-pct');
+        const ocrProgressBar = document.getElementById('ocr-progress-bar');
+        const uploadedThumbsWrap = document.getElementById('uploaded-thumbs-wrap');
+        const uploadedThumbsList = document.getElementById('uploaded-thumbs-list');
+
+        const heroCgpaValue = document.getElementById('hero-cgpa-value');
+        const cgpaModeBadge = document.getElementById('cgpa-mode-badge');
+        const statTotalCredits = document.getElementById('stat-total-credits');
+        const statSubjectCount = document.getElementById('stat-subject-count');
+        const statTotalPoints = document.getElementById('stat-total-points');
+        const statTheoryGpa = document.getElementById('stat-theory-gpa');
+        const statTheoryCredits = document.getElementById('stat-theory-credits');
+        const statSessionalGpa = document.getElementById('stat-sessional-gpa');
+        const statSessionalCredits = document.getElementById('stat-sessional-credits');
+
+        const excludeFChk = document.getElementById('exclude-f-chk');
+        const schoolFailLockChk = document.getElementById('school-fail-lock-chk');
+        const coursesTableBody = document.getElementById('courses-table-body');
+        const tableRowBadge = document.getElementById('table-row-badge');
+        const ocrVerifyBanner = document.getElementById('ocr-verify-banner');
+        let verifyBannerTimer = null;
+        document.getElementById('dismiss-verify-banner').addEventListener('click', () => {
+            clearTimeout(verifyBannerTimer);
+            ocrVerifyBanner.classList.add('hidden');
+        });
+        const gradeScaleModal = document.getElementById('grade-scale-modal');
+        const editableGradeGrid = document.getElementById('editable-grade-grid');
+        const scaleModalTitle = document.getElementById('scale-modal-title');
+
+        function renderEditableGradeModal() {
+            const activeMap = getActiveGradeMap();
+            scaleModalTitle.textContent = eduSystem === 'school'
+                ? '⚙️ স্কুল / কলেজ গ্রেড স্কেল এডিটর (5.00 Scale)'
+                : '⚙️ বিশ্ববিদ্যালয় গ্রেড স্কেল এডিটর (4.00 Scale)';
+
+            editableGradeGrid.innerHTML = Object.entries(activeMap).map(([grade, pts]) => `
+                <div class="bg-slate-50 border border-slate-200 p-2.5 rounded-xl flex items-center justify-between gap-2">
+                    <strong class="text-sm font-bold ${grade === 'F' ? 'text-rose-600' : 'text-slate-900'}">${grade}</strong>
+                    <input type="number" step="0.01" min="0" max="10" data-grade="${grade}" value="${Number(pts).toFixed(2)}" class="grade-scale-input w-24 bg-white border border-slate-300 focus:border-indigo-500 rounded-lg px-2 py-1 text-right font-bold text-indigo-700 focus:outline-none">
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('grade-scale-btn').addEventListener('click', () => {
+            renderEditableGradeModal();
+            gradeScaleModal.classList.remove('hidden');
+        });
+        document.getElementById('close-scale-modal').addEventListener('click', () => gradeScaleModal.classList.add('hidden'));
+        gradeScaleModal.addEventListener('click', e => { if (e.target === gradeScaleModal) gradeScaleModal.classList.add('hidden'); });
+
+        document.getElementById('save-grade-scale-btn').addEventListener('click', () => {
+            const targetMap = getActiveGradeMap();
+            editableGradeGrid.querySelectorAll('.grade-scale-input').forEach(inp => {
+                const g = inp.dataset.grade;
+                const val = Math.max(0, parseFloat(inp.value) || 0);
+                targetMap[g] = val;
+            });
+            try {
+                if (eduSystem === 'school') {
+                    localStorage.setItem('cgpa_custom_school_grades', JSON.stringify(schoolGradePoints));
+                } else {
+                    localStorage.setItem('cgpa_custom_uni_grades', JSON.stringify(uniGradePoints));
+                }
+            } catch (e) {}
+            gradeScaleModal.classList.add('hidden');
+            recalculateAndRender();
+            showToast('কাস্টম গ্রেড পয়েন্ট স্কেল সেভ ও প্রয়োগ হয়েছে!');
+        });
+
+        document.getElementById('reset-grade-scale-btn').addEventListener('click', () => {
+            if (eduSystem === 'school') {
+                schoolGradePoints = { ...DEFAULT_SCHOOL_GRADES };
+                try { localStorage.removeItem('cgpa_custom_school_grades'); } catch (e) {}
+            } else {
+                uniGradePoints = { ...DEFAULT_UNI_GRADES };
+                try { localStorage.removeItem('cgpa_custom_uni_grades'); } catch (e) {}
+            }
+            renderEditableGradeModal();
+            recalculateAndRender();
+            showToast('ডিফল্ট গ্রেড স্কেল ফিরিয়ে আনা হয়েছে।');
+        });
+
+        // Education System Switcher (University 4.00 vs School/College 5.00)
+        document.querySelectorAll('.edu-sys-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                eduSystem = btn.dataset.eduSystem;
+                document.querySelectorAll('.edu-sys-btn').forEach(b => {
+                    b.className = 'edu-sys-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition cursor-pointer';
+                });
+                btn.className = 'edu-sys-btn active px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-xs transition cursor-pointer';
+
+                const isSchool = eduSystem === 'school';
+                document.getElementById('header-scale-badge').textContent = isSchool ? 'SSC/HSC 5.00 Scale' : 'UGC 4.00 Scale';
+                document.getElementById('edu-system-hint').textContent = isSchool
+                    ? 'স্কুল/কলেজ বোর্ড সিস্টেম (ক্রেডিট ছাড়া + ৪র্থ বিষয় বোনাস)'
+                    : 'ক্রেডিট-ভিত্তিক ওয়েটেড CGPA হিসাব চালু আছে';
+
+                document.getElementById('uni-mode-bar').classList.toggle('hidden', isSchool);
+                document.getElementById('school-mode-bar').classList.toggle('hidden', !isSchool);
+                document.getElementById('school-mode-bar').classList.toggle('flex', isSchool);
+                document.getElementById('exclude-f-wrap').classList.toggle('hidden', isSchool);
+
+                document.getElementById('th-col-credit').classList.toggle('hidden', isSchool);
+                document.getElementById('th-col-type').textContent = isSchool ? 'Subject Role' : 'Type';
+                document.getElementById('th-col-points').textContent = isSchool ? 'Bonus / Net' : 'Points';
+
+                // Normalize grades if switching between 5.00 (no B+/B-/C+) and 4.00
+                const validGrades = getValidGradesList();
+                coursesList.forEach(c => {
+                    if (!validGrades.includes(c.letterGrade)) {
+                        c.letterGrade = c.letterGrade.replace(/[+-]/, '') || 'A';
+                    }
+                });
+
+                recalculateAndRender();
+                showToast(isSchool ? 'স্কুল/কলেজ (৫.০০ স্কেল) মোড চালু হয়েছে!' : 'বিশ্ববিদ্যালয় (৪.০০ স্কেল) মোড চালু হয়েছে!');
+            });
+        });
+
+        // Hybrid AI Modal & Settings Persistence
+        const aiSettingsModal = document.getElementById('ai-settings-modal');
+        const aiProviderSelect = document.getElementById('ai-provider-select');
+        const keyOcrspaceInput = document.getElementById('key-ocrspace');
+        const keyGroqInput = document.getElementById('key-groq');
+        const keyOpenrouterInput = document.getElementById('key-openrouter');
+        const keyGeminiInput = document.getElementById('key-gemini');
+        const keyOpenaiInput = document.getElementById('key-openai');
+        const keyClaudeInput = document.getElementById('key-claude');
+
+        try {
+            aiProviderSelect.value = localStorage.getItem('cgpa_ai_provider') || 'auto';
+            keyOcrspaceInput.value = localStorage.getItem('cgpa_key_ocrspace') || 'helloworld';
+            keyGroqInput.value = localStorage.getItem('cgpa_key_groq') || '';
+            keyOpenrouterInput.value = localStorage.getItem('cgpa_key_openrouter') || '';
+            keyGeminiInput.value = localStorage.getItem('cgpa_key_gemini') || '';
+            keyOpenaiInput.value = localStorage.getItem('cgpa_key_openai') || '';
+            keyClaudeInput.value = localStorage.getItem('cgpa_key_claude') || '';
+        } catch (e) {}
+
+        const aiSettingsBtn = document.getElementById('ai-settings-btn');
+        if (aiSettingsBtn) aiSettingsBtn.addEventListener('click', () => aiSettingsModal.classList.remove('hidden'));
+        document.getElementById('close-ai-modal').addEventListener('click', () => aiSettingsModal.classList.add('hidden'));
+        aiSettingsModal.addEventListener('click', e => { if (e.target === aiSettingsModal) aiSettingsModal.classList.add('hidden'); });
+
+        document.getElementById('save-ai-settings-btn').addEventListener('click', () => {
+            try {
+                localStorage.setItem('cgpa_ai_provider', aiProviderSelect.value);
+                localStorage.setItem('cgpa_key_ocrspace', keyOcrspaceInput.value.trim() || 'helloworld');
+                localStorage.setItem('cgpa_key_groq', keyGroqInput.value.trim());
+                localStorage.setItem('cgpa_key_openrouter', keyOpenrouterInput.value.trim());
+                localStorage.setItem('cgpa_key_gemini', keyGeminiInput.value.trim());
+                localStorage.setItem('cgpa_key_openai', keyOpenaiInput.value.trim());
+                localStorage.setItem('cgpa_key_claude', keyClaudeInput.value.trim());
+            } catch (e) {}
+            aiSettingsModal.classList.add('hidden');
+            showToast('Hybrid AI সেটিংস সংরক্ষিত হয়েছে!');
+        });
+
+        const imageLightboxModal = document.getElementById('image-lightbox-modal');
+        const lightboxTitle = document.getElementById('lightbox-title');
+        const lightboxImg = document.getElementById('lightbox-img');
+        document.getElementById('close-lightbox-btn').addEventListener('click', () => imageLightboxModal.classList.add('hidden'));
+        imageLightboxModal.addEventListener('click', e => { if (e.target === imageLightboxModal) imageLightboxModal.classList.add('hidden'); });
+
+        // Helper: Convert image File to Data URL and Base64 payload
+        function fileToBase64AndUrl(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const dataUrl = reader.result;
+                    const base64 = dataUrl.split(',')[1];
+                    resolve({ dataUrl, base64, mimeType: file.type || 'image/png' });
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        const VISION_EXTRACTION_PROMPT = `Analyze this academic result sheet / transcript image carefully.
+Extract EVERY single course or subject row visible in the table, regardless of how many columns or rows exist.
+Return ONLY a valid JSON array of objects, with no markdown fences or extra commentary.
+Each object MUST have these exact keys:
+- "courseCode": Course/Subject code string (e.g., "CSE 101", "101").
+- "courseName": Clean course/subject title ONLY (e.g., "Structured Programming", "Bangla"). Do NOT include course code, grades, "Regular", or dropdown arrows in courseName.
+- "credit": Numeric credit hours (e.g., 3.00, 1.50, 2.00, or 0 if school/college board sheet).
+- "courseType": Strictly "Theoretical", "Sessional", "Compulsory", or "Optional" (Practical/Lab/Sessional/Viva = "Sessional"; 4th/Optional subject = "Optional"; otherwise "Theoretical").
+- "repeatStatus": "Regular" or "Repeat".
+- "letterGrade": Exact letter grade earned ("A+", "A", "A-", "B+", "B", "B-", "C+", "C", "D", or "F").`;
+
+        async function extractCoursesWithGeminiVision(base64Data, mimeType) {
+            const apiKey = keyGeminiInput.value.trim();
+            if (!apiKey) throw new Error('Gemini API Key missing');
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{
+                    role: "user",
+                    parts: [
+                        { text: VISION_EXTRACTION_PROMPT },
+                        { inlineData: { mimeType, data: base64Data } }
+                    ]
+                }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                courseCode: { type: "STRING" },
+                                courseName: { type: "STRING" },
+                                credit: { type: "NUMBER" },
+                                courseType: { type: "STRING" },
+                                repeatStatus: { type: "STRING" },
+                                letterGrade: { type: "STRING" }
+                            },
+                            required: ["courseCode", "courseName", "credit", "courseType", "letterGrade"]
+                        }
+                    }
+                }
+            };
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) throw new Error(`Gemini HTTP ${response.status}`);
+            const result = await response.json();
+            const rawJson = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!rawJson) throw new Error('Empty Gemini response');
+            const parsed = JSON.parse(rawJson);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            throw new Error('No rows parsed');
+        }
+
+        // OpenAI ChatGPT (GPT-4o Vision) Connector
+        async function extractCoursesWithOpenAIVision(dataUrl) {
+            const apiKey = keyOpenaiInput.value.trim();
+            if (!apiKey) throw new Error('OpenAI API Key missing');
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'gpt-4o',
+                    temperature: 0,
+                    messages: [{
+                        role: 'user',
+                        content: [
+                            { type: 'text', text: VISION_EXTRACTION_PROMPT },
+                            { type: 'image_url', image_url: { url: dataUrl, detail: 'high' } }
+                        ]
+                    }]
+                })
+            });
+            if (!response.ok) throw new Error(`OpenAI HTTP ${response.status}`);
+            const data = await response.json();
+            const content = data?.choices?.[0]?.message?.content || '';
+            const jsonMatch = content.match(/\[[\s\S]*\]/);
+            if (!jsonMatch) throw new Error('No JSON array from OpenAI');
+            return JSON.parse(jsonMatch[0]);
+        }
+
+        // Anthropic Claude (Claude 3.5 Sonnet Vision) Connector
+        async function extractCoursesWithClaudeVision(base64Data, mimeType) {
+            const apiKey = keyClaudeInput.value.trim();
+            if (!apiKey) throw new Error('Claude API Key missing');
+
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01',
+                    'anthropic-dangerous-direct-browser-access': 'true'
+                },
+                body: JSON.stringify({
+                    model: 'claude-3-5-sonnet-20241022',
+                    max_tokens: 4096,
+                    temperature: 0,
+                    messages: [{
+                        role: 'user',
+                        content: [
+                            { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64Data } },
+                            { type: 'text', text: VISION_EXTRACTION_PROMPT }
+                        ]
+                    }]
+                })
+            });
+            if (!response.ok) throw new Error(`Claude HTTP ${response.status}`);
+            const data = await response.json();
+            const content = data?.content?.[0]?.text || '';
+            const jsonMatch = content.match(/\[[\s\S]*\]/);
+            if (!jsonMatch) throw new Error('No JSON array from Claude');
+            return JSON.parse(jsonMatch[0]);
+        }
+
+        // Groq Free Open-Source Llama Vision Connector
+        async function extractCoursesWithGroqVision(dataUrl) {
+            const apiKey = keyGroqInput.value.trim();
+            if (!apiKey) throw new Error('Groq API Key missing');
+
+            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+                    temperature: 0,
+                    messages: [{
+                        role: 'user',
+                        content: [
+                            { type: 'text', text: VISION_EXTRACTION_PROMPT },
+                            { type: 'image_url', image_url: { url: dataUrl } }
+                        ]
+                    }]
+                })
+            });
+            if (!response.ok) throw new Error(`Groq HTTP ${response.status}`);
+            const data = await response.json();
+            const content = data?.choices?.[0]?.message?.content || '';
+            const jsonMatch = content.match(/\[[\s\S]*\]/);
+            if (!jsonMatch) throw new Error('No JSON array from Groq');
+            return JSON.parse(jsonMatch[0]);
+        }
+
+        // OpenRouter Free Open-Source Vision (Qwen2.5-VL)
+        async function extractCoursesWithOpenRouterVision(dataUrl) {
+            const apiKey = keyOpenrouterInput.value.trim();
+            if (!apiKey) throw new Error('OpenRouter API Key missing');
+
+            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'qwen/qwen2.5-vl-72b-instruct:free',
+                    temperature: 0,
+                    messages: [{
+                        role: 'user',
+                        content: [
+                            { type: 'text', text: VISION_EXTRACTION_PROMPT },
+                            { type: 'image_url', image_url: { url: dataUrl } }
+                        ]
+                    }]
+                })
+            });
+            if (!response.ok) throw new Error(`OpenRouter HTTP ${response.status}`);
+            const data = await response.json();
+            const content = data?.choices?.[0]?.message?.content || '';
+            const jsonMatch = content.match(/\[[\s\S]*\]/);
+            if (!jsonMatch) throw new Error('No JSON array from OpenRouter');
+            return JSON.parse(jsonMatch[0]);
+        }
+
+        // 100% Free Built-In OCR.Space Table Recognition Engine (Works out of the box without signup!)
+        async function extractCoursesWithOCRSpaceTable(dataUrl) {
+            const apiKey = keyOcrspaceInput.value.trim() || 'helloworld';
+            const formData = new FormData();
+            formData.append('base64Image', dataUrl);
+            formData.append('language', 'eng');
+            formData.append('isTable', 'true');
+            formData.append('OCREngine', '2');
+            formData.append('scale', 'true');
+
+            const response = await fetch('https://api.ocr.space/parse/image', {
+                method: 'POST',
+                headers: { 'apikey': apiKey },
+                body: formData
+            });
+            if (!response.ok) throw new Error(`OCR.Space HTTP ${response.status}`);
+            const res = await response.json();
+            const parsedText = res?.ParsedResults?.[0]?.ParsedText || '';
+            if (!parsedText) throw new Error('Empty OCR.Space result');
+
+            const lines = parsedText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+            const extracted = [];
+            const validGrades = getValidGradesList();
+            let pendingPrefixCols = [];
+
+            for (const line of lines) {
+                if (/Course\s*Code|Doctor\s*of|Semester/i.test(line)) continue;
+                const cols = line.split(/\t+|\s{2,}/).map(c => c.trim()).filter(Boolean);
+
+                // Anchor on Credit token (e.g., 3.00, 1.50, 2.00)
+                const creditIdx = cols.findIndex(c => /^(?:[0-9]|10)\.\d{1,2}$/.test(c));
+                if (creditIdx === -1) {
+                    if (cols.length <= 2 && !/^\d+$/.test(cols[0])) {
+                        pendingPrefixCols.push(...cols);
+                    }
+                    continue;
+                }
+
+                const credit = parseFloat(cols[creditIdx]);
+                if (isNaN(credit) || credit <= 0 || credit > 10) continue;
+
+                const beforeCols = [...pendingPrefixCols, ...cols.slice(0, creditIdx)].filter(c => !/^\d{1,2}$/.test(c));
+                pendingPrefixCols = [];
+
+                const courseCode = beforeCols.find(c => /^[A-Z]{2,5}\s*-?\s*\d{2,4}/i.test(c)) || beforeCols[0] || '';
+                const nameParts = beforeCols.filter(c => c !== courseCode);
+                const courseName = nameParts.join(' ') || 'Course Subject';
+
+                // Anchor on rightmost valid Letter Grade token
+                const afterCols = cols.slice(creditIdx + 1);
+                const afterJoined = afterCols.join(' ');
+                const isSessional = /sessional|practical|lab|viva/i.test(afterJoined + ' ' + courseName);
+                const isRepeat = /repeat/i.test(afterJoined);
+
+                let foundGrade = '';
+                for (let i = afterCols.length - 1; i >= 0; i--) {
+                    const cleanToken = afterCols[i].toUpperCase().replace(/[^A-DF+-]/g, '');
+                    if (validGrades.includes(cleanToken)) {
+                        foundGrade = cleanToken;
+                        break;
+                    }
+                }
+
+                extracted.push({
+                    courseCode,
+                    courseName,
+                    credit,
+                    courseType: isSessional ? 'Sessional' : 'Theoretical',
+                    repeatStatus: isRepeat ? 'Repeat' : 'Regular',
+                    letterGrade: foundGrade || 'A+'
+                });
+            }
+            if (extracted.length === 0) throw new Error('No table rows matched');
+            return extracted;
+        }
+
+        // High-Precision Credit & Letter Grade (LG) Anchor-Based Table OCR Engine (Tesseract.js Offline Fallback)
+        async function extractCoursesWithDeepTableOCR(dataUrl, onProgress) {
+            if (typeof Tesseract === 'undefined') return [];
+
+            const img = await new Promise((res, rej) => {
+                const i = new Image();
+                i.onload = () => res(i);
+                i.onerror = rej;
+                i.src = dataUrl;
+            });
+
+            const scale = img.naturalWidth < 1800 ? 2.5 : 1.5;
+            const cw = Math.round(img.naturalWidth * scale);
+            const ch = Math.round(img.naturalHeight * scale);
+            const canvas = document.createElement('canvas');
+            canvas.width = cw;
+            canvas.height = ch;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, cw, ch);
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, 0, 0, cw, ch);
+
+            // High-contrast grayscale enhancement
+            const imgData = ctx.getImageData(0, 0, cw, ch);
+            const d = imgData.data;
+            for (let p = 0; p < d.length; p += 4) {
+                const lum = 0.299 * d[p] + 0.587 * d[p + 1] + 0.114 * d[p + 2];
+                const adj = lum > 225 ? 255 : Math.max(0, Math.min(255, (lum - 128) * 1.35 + 128));
+                d[p] = d[p + 1] = d[p + 2] = adj;
+            }
+            ctx.putImageData(imgData, 0, 0);
+
+            const worker = await Tesseract.createWorker('eng', 1, {
+                logger: m => {
+                    if (m.status === 'recognizing text' && typeof onProgress === 'function') {
+                        onProgress(Math.round(25 + m.progress * 65));
+                    }
+                }
+            });
+
+            await worker.setParameters({
+                tessedit_pageseg_mode: '6',
+                preserve_interword_spaces: '1'
+            });
+
+            const { data } = await worker.recognize(canvas.toDataURL('image/png'));
+            await worker.terminate();
+
+            const words = (data.words || []).filter(w => w.text && w.text.trim().length > 0);
+            const validGrades = getValidGradesList();
+
+            let colBounds = {
+                codeMaxX: cw * 0.26,
+                nameMaxX: cw * 0.60,
+                creditMaxX: cw * 0.70,
+                typeMaxX: cw * 0.80,
+                statusMaxX: cw * 0.91
+            };
+
+            const headerYWords = words.filter(w => /Course|Credit|Type|Status|LG|Grade/i.test(w.text));
+            if (headerYWords.length >= 2) {
+                const findHeaderX = (rx) => headerYWords.find(w => rx.test(w.text))?.bbox.x0;
+                const nameX = findHeaderX(/Name|Title/i);
+                const creditX = findHeaderX(/Credit/i);
+                const typeX = findHeaderX(/Type/i);
+                const statusX = findHeaderX(/Repeat|Status/i);
+                const lgX = findHeaderX(/^LG$|Grade/i);
+                if (nameX) colBounds.codeMaxX = nameX - 12;
+                if (creditX) colBounds.nameMaxX = creditX - 12;
+                if (typeX) colBounds.creditMaxX = typeX - 12;
+                if (statusX) colBounds.typeMaxX = statusX - 12;
+                if (lgX) colBounds.statusMaxX = lgX - 12;
+            }
+
+            const creditAnchors = words
+                .filter(w => /^(?:[0-9]|10)\.\d{1,2}$/.test(w.text.trim()) && w.bbox.x0 >= colBounds.nameMaxX * 0.85 && w.bbox.x0 <= colBounds.creditMaxX * 1.15)
+                .sort((a, b) => a.bbox.y0 - b.bbox.y0);
+
+            const lgAnchors = words
+                .map(w => ({
+                    word: w,
+                    cy: (w.bbox.y0 + w.bbox.y1) / 2,
+                    grade: w.text.trim().toUpperCase().replace(/[^A-DF+-]/g, '')
+                }))
+                .filter(item => item.word.bbox.x0 >= colBounds.statusMaxX * 0.92 && validGrades.includes(item.grade));
+
+            const extracted = [];
+            for (let i = 0; i < creditAnchors.length; i++) {
+                const cWord = creditAnchors[i];
+                const credit = parseFloat(cWord.text.trim());
+                if (isNaN(credit) || credit <= 0 || credit > 10) continue;
+
+                const anchorCy = (cWord.bbox.y0 + cWord.bbox.y1) / 2;
+                const prevCy = i > 0 ? (creditAnchors[i - 1].bbox.y0 + creditAnchors[i - 1].bbox.y1) / 2 : anchorCy - ch * 0.12;
+                const nextCy = i < creditAnchors.length - 1 ? (creditAnchors[i + 1].bbox.y0 + creditAnchors[i + 1].bbox.y1) / 2 : anchorCy + ch * 0.12;
+
+                const bandTop = (prevCy + anchorCy) / 2;
+                const bandBottom = (anchorCy + nextCy) / 2;
+
+                let matchedLg = '';
+                let bestLgDist = Infinity;
+                for (const lgItem of lgAnchors) {
+                    const dist = Math.abs(lgItem.cy - anchorCy);
+                    if (lgItem.cy >= bandTop && lgItem.cy <= bandBottom && dist < bestLgDist) {
+                        bestLgDist = dist;
+                        matchedLg = lgItem.grade;
+                    }
+                }
+
+                const bandWords = words
+                    .filter(w => {
+                        const wCy = (w.bbox.y0 + w.bbox.y1) / 2;
+                        return wCy >= bandTop && wCy <= bandBottom && !/Course\s*Code|Doctor\s*of|Semester/i.test(w.text);
+                    })
+                    .sort((a, b) => (Math.abs(a.bbox.y0 - b.bbox.y0) > 12 ? a.bbox.y0 - b.bbox.y0 : a.bbox.x0 - b.bbox.x0));
+
+                const codeWords = bandWords.filter(w => w.bbox.x0 < colBounds.codeMaxX && !/^\d{1,2}$/.test(w.text.trim()));
+                const nameWords = bandWords.filter(w => w.bbox.x0 >= colBounds.codeMaxX && w.bbox.x0 < colBounds.nameMaxX && w !== cWord);
+                const typeWords = bandWords.filter(w => w.bbox.x0 >= colBounds.creditMaxX && w.bbox.x0 < colBounds.typeMaxX);
+                const statusWords = bandWords.filter(w => w.bbox.x0 >= colBounds.typeMaxX && w.bbox.x0 < colBounds.statusMaxX);
+
+                const courseCode = codeWords.map(w => w.text).join(' ').replace(/[^A-Z0-9\s-]/gi, '').trim();
+                const courseName = nameWords.map(w => w.text).join(' ').trim();
+                const typeStr = typeWords.map(w => w.text).join(' ');
+                const statusStr = statusWords.map(w => w.text).join(' ');
+
+                const isSessional = /sessional|practical|lab|viva/i.test(typeStr + ' ' + courseName);
+                const isRepeat = /repeat/i.test(statusStr);
+
+                extracted.push({
+                    courseCode,
+                    courseName: courseName || 'Course Subject',
+                    credit,
+                    courseType: isSessional ? 'Sessional' : 'Theoretical',
+                    repeatStatus: isRepeat ? 'Repeat' : 'Regular',
+                    letterGrade: matchedLg || 'A+'
+                });
+            }
+            return extracted;
+        }
+
+        // Smart Normalizer: Clean trailing grades, slashes, table borders, or UI artifacts
+        function normalizeCourseItem(raw, sourceLabel = '') {
+            const validGrades = getValidGradesList();
+            let courseCode = String(raw.courseCode || '')
+                .replace(/^[\/|\\\-_.:]+|[\/|\\\-_.:]+$/g, '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .toUpperCase();
+            let rawName = String(raw.courseName || 'Untitled Course').trim();
+            let rawGrade = String(raw.letterGrade || '').trim().toUpperCase().replace(/\s+/g, '');
+            if (eduSystem === 'school' && !validGrades.includes(rawGrade)) {
+                rawGrade = rawGrade.replace(/[+-]/, '');
+            }
+
+            if (courseCode) {
+                const compactCode = courseCode.replace(/\s+/g, '\\s*');
+                rawName = rawName.replace(new RegExp(`^${compactCode}\\s*[-:]?\\s*`, 'i'), '').trim();
+            }
+
+            rawName = rawName
+                .replace(/\s+(?:v|vv|x|xx|ov|wv|As)\b.*$/i, '')
+                .replace(/\s+\d+\.\d{2}.*$/, '')
+                .trim();
+
+            if (!validGrades.includes(rawGrade)) {
+                for (const g of validGrades) {
+                    const escapedG = g.replace('+', '\\+');
+                    const trailingRegex = new RegExp(`\\b${escapedG}$`, 'i');
+                    if (trailingRegex.test(rawName)) {
+                        rawGrade = g;
+                        rawName = rawName.replace(trailingRegex, '').trim();
+                        break;
+                    }
+                }
+            }
+
+            for (const g of validGrades) {
+                const escapedG = g.replace('+', '\\+');
+                rawName = rawName.replace(new RegExp(`\\s+${escapedG}$`, 'i'), '').trim();
+            }
+
+            rawName = rawName.replace(/\b(?:Regular|Repeat)\b/gi, '').trim();
+
+            const letterGrade = validGrades.includes(rawGrade) ? rawGrade : 'A+';
+            const credit = Math.max(0, parseFloat(raw.credit) || 0);
+            const isOptional = /optional|4th|fourth/i.test(String(raw.courseType || '') + ' ' + rawName);
+            const isSessional = /sessional|practical|lab|viva/i.test(String(raw.courseType || ''));
+            const isRepeat = /repeat/i.test(String(raw.repeatStatus || ''));
+
+            return {
+                id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random()}`,
+                courseCode,
+                courseName: rawName || 'Course Subject',
+                credit,
+                courseType: isSessional ? 'Sessional' : 'Theoretical',
+                subjectRole: isOptional ? 'Optional' : 'Compulsory',
+                repeatStatus: isRepeat ? 'Repeat' : 'Regular',
+                letterGrade,
+                sourceLabel
+            };
+        }
+
+        // Complete Multi-Model Hybrid Extraction Pipeline
+        async function runHybridExtractionPipeline(dataUrl, base64, mimeType, onStatus) {
+            const mode = aiProviderSelect.value;
+
+            const tryGemini = async () => {
+                onStatus('Gemini Vision AI বিশ্লেষণ করছে...');
+                return await extractCoursesWithGeminiVision(base64, mimeType);
+            };
+            const tryGroq = async () => {
+                onStatus('Groq Llama Vision AI বিশ্লেষণ করছে...');
+                return await extractCoursesWithGroqVision(dataUrl);
+            };
+            const tryOpenRouter = async () => {
+                onStatus('OpenRouter Free Vision AI বিশ্লেষণ করছে...');
+                return await extractCoursesWithOpenRouterVision(dataUrl);
+            };
+            const tryOpenAI = async () => {
+                onStatus('OpenAI GPT-4o Vision বিশ্লেষণ করছে...');
+                return await extractCoursesWithOpenAIVision(dataUrl);
+            };
+            const tryClaude = async () => {
+                onStatus('Claude 3.5 Vision বিশ্লেষণ করছে...');
+                return await extractCoursesWithClaudeVision(base64, mimeType);
+            };
+            const tryOCRSpace = async () => {
+                onStatus('OCR.Space Free Table ইঞ্জিন টেবিল পড়ছে...');
+                return await extractCoursesWithOCRSpaceTable(dataUrl);
+            };
+            const tryDeepOCR = async () => {
+                onStatus('অফলাইন 2.5x Upscaled Table OCR ইঞ্জিন পড়ছে...');
+                return await extractCoursesWithDeepTableOCR(dataUrl, pct => {
+                    ocrProgressBar.style.width = `${pct}%`;
+                    ocrProgressPct.textContent = `${pct}%`;
+                });
+            };
+
+            if (mode === 'gemini') return await tryGemini();
+            if (mode === 'groq') return await tryGroq();
+            if (mode === 'openrouter') return await tryOpenRouter();
+            if (mode === 'ocrspace') return await tryOCRSpace();
+            if (mode === 'openai') return await tryOpenAI();
+            if (mode === 'claude') return await tryClaude();
+            if (mode === 'local') return await tryDeepOCR();
+
+            // Hybrid Auto Chain: Gemini -> Groq -> OpenRouter Free -> OpenAI -> Claude -> Free Built-in OCR.Space -> Local Deep OCR
+            if (keyGeminiInput.value.trim()) {
+                try {
+                    const res = await tryGemini();
+                    if (res && res.length > 0) return res;
+                } catch (e) {}
+            }
+
+            if (keyGroqInput.value.trim()) {
+                try {
+                    const res = await tryGroq();
+                    if (res && res.length > 0) return res;
+                } catch (e) {}
+            }
+
+            if (keyOpenrouterInput.value.trim()) {
+                try {
+                    const res = await tryOpenRouter();
+                    if (res && res.length > 0) return res;
+                } catch (e) {}
+            }
+
+            if (keyOpenaiInput.value.trim()) {
+                try {
+                    const res = await tryOpenAI();
+                    if (res && res.length > 0) return res;
+                } catch (e) {}
+            }
+
+            if (keyClaudeInput.value.trim()) {
+                try {
+                    const res = await tryClaude();
+                    if (res && res.length > 0) return res;
+                } catch (e) {}
+            }
+
+            try {
+                const res = await tryOCRSpace();
+                if (res && res.length > 0) return res;
+            } catch (e) {}
+
+            return await tryDeepOCR();
+        }
+
+        async function processUploadedResultImages(fileList) {
+            const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+            if (files.length === 0) {
+                showToast('অনুগ্রহ করে বৈধ রেজাল্ট শিটের ছবি দিন।');
+                return;
+            }
+
+            ocrProgressWrap.classList.remove('hidden');
+            let totalAdded = 0;
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const basePct = Math.round((i / files.length) * 100);
+                ocrProgressBar.style.width = `${Math.max(15, basePct + 15)}%`;
+                ocrProgressPct.textContent = `${Math.max(15, basePct + 15)}%`;
+
+                try {
+                    const { dataUrl, base64, mimeType } = await fileToBase64AndUrl(file);
+                    uploadedImages.push({ name: file.name, dataUrl });
+                    renderUploadedThumbs();
+
+                    const rows = await runHybridExtractionPipeline(dataUrl, base64, mimeType, label => {
+                        ocrProgressLabel.innerHTML = `<span class="w-2 h-2 rounded-full bg-indigo-600 animate-ping"></span> (${i + 1}/${files.length}) ${label}`;
+                    });
+
+                    if (rows.length > 0) {
+                        rows.forEach(r => {
+                            coursesList.push(normalizeCourseItem(r, file.name));
+                            totalAdded++;
+                        });
+                    }
+                } catch (err) {
+                    showToast(`"${file.name}" ছবিটি পড়তে সমস্যা হয়েছে।`);
+                }
+            }
+
+            ocrProgressBar.style.width = '100%';
+            ocrProgressPct.textContent = '100%';
+            setTimeout(() => ocrProgressWrap.classList.add('hidden'), 600);
+
+            recalculateAndRender();
+            if (totalAdded > 0) {
+                ocrVerifyBanner.classList.remove('hidden');
+                clearTimeout(verifyBannerTimer);
+                verifyBannerTimer = setTimeout(() => {
+                    ocrVerifyBanner.classList.add('hidden');
+                }, 8000);
+                showToast(`⚠️ ${totalAdded}টি সাবজেক্ট যোগ হয়েছে! মিস্টেক এড়াতে ক্রেডিট ও গ্রেড একবার চেক করে নিন।`);
+            } else {
+                showToast('ছবি থেকে কোনো কোর্স টেবিল পাওয়া যায়নি, পরিষ্কার রেজাল্ট শিটের ছবি দিন।');
+            }
+        }
+
+        function renderUploadedThumbs() {
+            if (uploadedImages.length === 0) {
+                uploadedThumbsWrap.classList.add('hidden');
+                uploadedThumbsList.innerHTML = '';
+                return;
+            }
+            uploadedThumbsWrap.classList.remove('hidden');
+            uploadedThumbsList.innerHTML = uploadedImages.map((imgObj, idx) => `
+                <button type="button" data-idx="${idx}" class="thumb-preview-btn group relative border border-slate-200 hover:border-indigo-500 rounded-xl p-1 bg-slate-50 flex items-center gap-1.5 pr-2.5 cursor-pointer transition">
+                    <img src="${imgObj.dataUrl}" alt="" class="w-9 h-9 object-cover rounded-lg">
+                    <span class="text-[11px] font-medium text-slate-700 max-w-[100px] truncate">${escapeHtml(imgObj.name)}</span>
+                </button>
+            `).join('');
+
+            uploadedThumbsList.querySelectorAll('.thumb-preview-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const item = uploadedImages[Number(btn.dataset.idx)];
+                    if (!item) return;
+                    lightboxTitle.textContent = item.name;
+                    lightboxImg.src = item.dataUrl;
+                    imageLightboxModal.classList.remove('hidden');
+                });
+            });
+        }
+
+        // ================= CORE CGPA CALCULATION & TABLE RENDER =================
+        function recalculateAndRender() {
+            const gradeMap = getActiveGradeMap();
+
+            if (eduSystem === 'school') {
+                // SSC / HSC Board 5.00 GPA Logic (No credits, Compulsory Avg + 4th Subject Bonus above 2.00)
+                let compCount = 0, compGpSum = 0, hasCompulsoryFail = false;
+                let optCount = 0, optBonusSum = 0, optRawGp = 0;
+
+                coursesList.forEach(c => {
+                    const gp = gradeMap[c.letterGrade] ?? 0;
+                    if (c.subjectRole === 'Optional') {
+                        optCount++;
+                        optRawGp += gp;
+                        if (gp > 2.00) optBonusSum += (gp - 2.00);
+                    } else {
+                        compCount++;
+                        compGpSum += gp;
+                        if (gp === 0) hasCompulsoryFail = true;
+                    }
+                });
+
+                const without4thGpa = compCount > 0 ? (compGpSum / compCount) : 0;
+                let finalBoardGpa = compCount > 0 ? ((compGpSum + optBonusSum) / compCount) : 0;
+                finalBoardGpa = Math.min(5.00, finalBoardGpa);
+                if (schoolFailLockChk.checked && hasCompulsoryFail) {
+                    finalBoardGpa = 0.00;
+                }
+
+                cgpaModeBadge.textContent = hasCompulsoryFail && schoolFailLockChk.checked ? 'অকৃতকার্য (Failed)' : 'বোর্ড রেজাল্ট (5.00 Scale)';
+                heroCgpaValue.textContent = finalBoardGpa.toFixed(2);
+                document.getElementById('hero-scale-caption').textContent = 'অর্জিত বোর্ড GPA (৫.০০ স্কেলে)';
+
+                document.getElementById('stat-box1-title').textContent = 'মোট বিষয় (Subjects)';
+                statTotalCredits.textContent = `${coursesList.length} টি`;
+                statSubjectCount.textContent = `${compCount} আবশ্যিক + ${optCount} ঐচ্ছিক`;
+
+                document.getElementById('stat-box2-title').textContent = 'মোট অর্জিত পয়েন্ট';
+                statTotalPoints.textContent = (compGpSum + optBonusSum).toFixed(2);
+                document.getElementById('stat-box2-sub').textContent = `৪র্থ বিষয় বোনাস: +${optBonusSum.toFixed(2)}`;
+
+                document.getElementById('stat-box3-title').textContent = '৪র্থ বিষয় ছাড়া GPA';
+                statTheoryGpa.textContent = without4thGpa.toFixed(2);
+                statTheoryCredits.textContent = `${compCount}টি আবশ্যিক বিষয়`;
+
+                document.getElementById('stat-box4-title').textContent = '৪র্থ বিষয় (4th Subject)';
+                statSessionalGpa.textContent = optCount > 0 ? `+${optBonusSum.toFixed(2)} বোনাস` : 'নেই';
+                statSessionalCredits.textContent = optCount > 0 ? `মূল GP: ${optRawGp.toFixed(2)}` : 'ঐচ্ছিক বিষয় যুক্ত করুন';
+
+                document.getElementById('footer-label-left').setAttribute('colspan', '2');
+                document.getElementById('footer-label-left').textContent = `মোট বিষয়: ${coursesList.length}টি`;
+                document.getElementById('footer-total-credits').classList.add('hidden');
+                document.getElementById('footer-label-right').textContent = 'মোট পয়েন্ট (বোনাসসহ):';
+                document.getElementById('footer-total-points').textContent = (compGpSum + optBonusSum).toFixed(2);
+
+                renderEditableTable();
+                return;
+            }
+
+            // University 4.00 CGPA Logic
+            document.getElementById('hero-scale-caption').textContent = 'অর্জিত GPA / CGPA (৪.০০ স্কেলে)';
+            document.getElementById('stat-box1-title').textContent = 'হিসাবকৃত মোট ক্রেডিট';
+            document.getElementById('stat-box2-title').textContent = 'মোট গ্রেড পয়েন্ট';
+            document.getElementById('stat-box2-sub').textContent = 'মোট পয়েন্ট যোগফল';
+            document.getElementById('stat-box3-title').textContent = 'শুধু Theoretical GPA';
+            document.getElementById('stat-box4-title').textContent = 'শুধু Sessional GPA';
+            document.getElementById('footer-label-left').setAttribute('colspan', '3');
+            document.getElementById('footer-label-left').textContent = 'মোট (Total):';
+            document.getElementById('footer-total-credits').classList.remove('hidden');
+            document.getElementById('footer-label-right').textContent = 'মোট পয়েন্ট (Points):';
+
+            const excludeF = excludeFChk.checked;
+
+            let allCredits = 0, allPoints = 0, allCount = 0;
+            let theoryCredits = 0, theoryPoints = 0, theoryCount = 0;
+            let sessCredits = 0, sessPoints = 0, sessCount = 0;
+
+            coursesList.forEach(c => {
+                const gp = gradeMap[c.letterGrade] ?? 0;
+                if (excludeF && gp === 0) return;
+
+                const pts = c.credit * gp;
+                allCredits += c.credit;
+                allPoints += pts;
+                allCount++;
+
+                if (c.courseType === 'Theoretical') {
+                    theoryCredits += c.credit;
+                    theoryPoints += pts;
+                    theoryCount++;
+                } else {
+                    sessCredits += c.credit;
+                    sessPoints += pts;
+                    sessCount++;
+                }
+            });
+
+            const allGpa = allCredits > 0 ? (allPoints / allCredits) : 0;
+            const theoryGpa = theoryCredits > 0 ? (theoryPoints / theoryCredits) : 0;
+            const sessGpa = sessCredits > 0 ? (sessPoints / sessCredits) : 0;
+
+            if (calcMode === 'theoretical') {
+                cgpaModeBadge.textContent = 'শুধুমাত্র Theoretical কোর্স';
+                heroCgpaValue.textContent = theoryGpa.toFixed(2);
+                statTotalCredits.textContent = theoryCredits.toFixed(2);
+                statSubjectCount.textContent = `${theoryCount}টি Theoretical সাবজেক্ট`;
+                statTotalPoints.textContent = theoryPoints.toFixed(2);
+            } else if (calcMode === 'sessional') {
+                cgpaModeBadge.textContent = 'শুধুমাত্র Sessional / Lab কোর্স';
+                heroCgpaValue.textContent = sessGpa.toFixed(2);
+                statTotalCredits.textContent = sessCredits.toFixed(2);
+                statSubjectCount.textContent = `${sessCount}টি Sessional সাবজেক্ট`;
+                statTotalPoints.textContent = sessPoints.toFixed(2);
+            } else {
+                cgpaModeBadge.textContent = 'সব কোর্স (Theoretical + Sessional)';
+                heroCgpaValue.textContent = allGpa.toFixed(2);
+                statTotalCredits.textContent = allCredits.toFixed(2);
+                statSubjectCount.textContent = `${allCount}টি মোট সাবজেক্ট`;
+                statTotalPoints.textContent = allPoints.toFixed(2);
+            }
+
+            statTheoryGpa.textContent = theoryGpa.toFixed(2);
+            statTheoryCredits.textContent = `${theoryCredits.toFixed(2)} ক্রেডিট (${theoryCount}টি)`;
+            statSessionalGpa.textContent = sessGpa.toFixed(2);
+            statSessionalCredits.textContent = `${sessCredits.toFixed(2)} ক্রেডিট (${sessCount}টি)`;
+
+            document.getElementById('footer-total-credits').textContent = allCredits.toFixed(2);
+            document.getElementById('footer-total-points').textContent = allPoints.toFixed(2);
+
+            renderEditableTable();
+        }
+
+        function renderEditableTable() {
+            tableRowBadge.textContent = coursesList.length;
+            const isSchool = eduSystem === 'school';
+            const gradeMap = getActiveGradeMap();
+            const validGrades = getValidGradesList();
+
+            if (coursesList.length === 0) {
+                coursesTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="${isSchool ? 9 : 10}" class="py-10 text-center space-y-3">
+                            <p class="text-slate-400 text-xs">এখনো কোনো রেজাল্ট শিটের ছবি দেওয়া হয়নি। উপরে রেজাল্ট শিটের ছবি আপলোড করুন অথবা নিচের বাটনে ক্লিক করে সাবজেক্ট যোগ করুন।</p>
+                            <button type="button" class="dynamic-add-row-btn inline-flex items-center gap-1.5 bg-slate-900 hover:bg-indigo-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition cursor-pointer">
+                                <span>+ নতুন সাবজেক্ট যোগ করুন</span>
+                            </button>
+                        </td>
+                    </tr>`;
+                const emptyAddBtn = coursesTableBody.querySelector('.dynamic-add-row-btn');
+                if (emptyAddBtn) emptyAddBtn.addEventListener('click', addNewSubjectRow);
+                document.getElementById('footer-total-credits').textContent = '0.00';
+                document.getElementById('footer-total-points').textContent = '0.00';
+                return;
+            }
+
+            coursesTableBody.innerHTML = '';
+            coursesList.forEach((course, idx) => {
+                const gp = gradeMap[course.letterGrade] ?? 0;
+                const points = isSchool
+                    ? (course.subjectRole === 'Optional' ? Math.max(0, gp - 2.00) : gp)
+                    : (course.credit * gp);
+
+                const isExcludedByMode = !isSchool && (
+                    (calcMode === 'theoretical' && course.courseType !== 'Theoretical') ||
+                    (calcMode === 'sessional' && course.courseType !== 'Sessional') ||
+                    (excludeFChk.checked && gp === 0)
+                );
+
+                const tr = document.createElement('tr');
+                tr.className = isExcludedByMode
+                    ? 'bg-slate-100/70 opacity-50 transition-opacity'
+                    : 'hover:bg-indigo-50/30 transition-colors';
+
+                const typeOrRoleHtml = isSchool
+                    ? `<select data-field="subjectRole" class="row-input bg-white border border-slate-200 focus:border-indigo-500 rounded-lg px-2 py-1 text-xs font-semibold ${course.subjectRole === 'Optional' ? 'text-amber-700 bg-amber-50' : 'text-indigo-700'} focus:outline-none cursor-pointer">
+                        <option value="Compulsory" ${course.subjectRole !== 'Optional' ? 'selected' : ''}>Compulsory</option>
+                        <option value="Optional" ${course.subjectRole === 'Optional' ? 'selected' : ''}>4th Subject (Optional)</option>
+                       </select>`
+                    : `<select data-field="courseType" class="row-input bg-white border border-slate-200 focus:border-indigo-500 rounded-lg px-2 py-1 text-xs font-semibold ${course.courseType === 'Sessional' ? 'text-emerald-700' : 'text-indigo-700'} focus:outline-none cursor-pointer">
+                        <option value="Theoretical" ${course.courseType === 'Theoretical' ? 'selected' : ''}>Theoretical</option>
+                        <option value="Sessional" ${course.courseType === 'Sessional' ? 'selected' : ''}>Sessional</option>
+                       </select>`;
+
+                const isManualRow = course.sourceLabel === 'Manual';
+                const showCreditReq = isManualRow && !course.creditEdited;
+                const showGradeReq = isManualRow && !course.gradeEdited;
+
+                tr.innerHTML = `
+                    <td class="py-2.5 px-3 sm:px-4 font-mono text-xs font-bold text-slate-500">${idx + 1}</td>
+                    <td class="py-2.5 px-3 sm:px-4">
+                        <input type="text" placeholder="Optional" value="${escapeHtml(course.courseCode)}" data-field="courseCode" class="row-input w-24 bg-white border border-slate-200 focus:border-indigo-500 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-800 placeholder:text-slate-300 placeholder:font-normal focus:outline-none">
+                    </td>
+                    <td class="py-2.5 px-3 sm:px-4">
+                        <input type="text" placeholder="Optional (বিষয়ের নাম)" value="${escapeHtml(course.courseName)}" data-field="courseName" class="row-input w-full min-w-[180px] bg-white border border-slate-200 focus:border-indigo-500 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-800 placeholder:text-slate-300 placeholder:font-normal focus:outline-none">
+                    </td>
+                    ${isSchool ? '' : `
+                    <td class="py-2.5 px-3 sm:px-4">
+                        <div class="inline-flex flex-col items-center gap-0.5">
+                            <input type="number" step="0.25" min="0" max="10" required title="ক্রেডিট সংখ্যা দিন" value="${course.credit.toFixed(2)}" data-field="credit" class="row-input w-20 bg-amber-50/80 border-2 border-amber-400 focus:border-indigo-600 rounded-lg px-2 py-1 text-xs font-mono font-extrabold text-center text-amber-950 focus:outline-none">
+                            ${showCreditReq ? '<span class="text-[9px] font-bold uppercase tracking-wider text-amber-700">Required</span>' : ''}
+                        </div>
+                    </td>`}
+                    <td class="py-2.5 px-3 sm:px-4">${typeOrRoleHtml}</td>
+                    <td class="py-2.5 px-3 sm:px-4">
+                        <select data-field="repeatStatus" class="row-input rounded-full px-2.5 py-0.5 text-[11px] font-bold focus:outline-none cursor-pointer ${course.repeatStatus === 'Repeat' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-emerald-600 text-white'}">
+                            <option value="Regular" ${course.repeatStatus !== 'Repeat' ? 'selected' : ''} class="bg-white text-slate-900">Regular</option>
+                            <option value="Repeat" ${course.repeatStatus === 'Repeat' ? 'selected' : ''} class="bg-white text-slate-900">Repeat</option>
+                        </select>
+                    </td>
+                    <td class="py-2.5 px-3 sm:px-4">
+                        <div class="inline-flex flex-col items-center gap-0.5">
+                            <select required title="গ্রেড সিলেক্ট করুন" data-field="letterGrade" class="row-input bg-amber-50/80 border-2 border-amber-400 focus:border-indigo-600 rounded-lg px-2 py-1 text-xs font-mono font-extrabold ${course.letterGrade === 'F' ? 'text-rose-600' : 'text-amber-950'} focus:outline-none cursor-pointer">
+                                ${validGrades.map(g => `<option value="${g}" ${course.letterGrade === g ? 'selected' : ''}>${g}</option>`).join('')}
+                            </select>
+                            ${showGradeReq ? '<span class="text-[9px] font-bold uppercase tracking-wider text-amber-700">Required</span>' : ''}
+                        </div>
+                    </td>
+                    <td class="py-2.5 px-3 sm:px-4 font-mono text-xs font-bold text-slate-700">${gp.toFixed(2)}</td>
+                    <td class="py-2.5 px-3 sm:px-4 font-mono text-xs font-bold text-emerald-700">${isSchool && course.subjectRole === 'Optional' ? `+${points.toFixed(2)}` : points.toFixed(2)}</td>
+                    <td class="py-2.5 px-3 sm:px-4 text-right">
+                        <button type="button" class="delete-row-btn text-xs font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded-lg transition cursor-pointer" title="সারি মুছুন">✕</button>
+                    </td>
+                `;
+
+                tr.querySelectorAll('.row-input').forEach(el => {
+                    const markEditedAndRefresh = () => {
+                        const field = el.dataset.field;
+                        if (field === 'credit') {
+                            coursesList[idx].credit = Math.max(0, parseFloat(el.value) || 0);
+                            coursesList[idx].creditEdited = true;
+                        } else if (field === 'letterGrade') {
+                            coursesList[idx].letterGrade = el.value;
+                            coursesList[idx].gradeEdited = true;
+                        } else {
+                            coursesList[idx][field] = el.value;
+                        }
+                        recalculateAndRender();
+                    };
+
+                    el.addEventListener('change', markEditedAndRefresh);
+
+                    if (el.dataset.field === 'credit' || el.dataset.field === 'letterGrade') {
+                        el.addEventListener('focus', () => {
+                            const field = el.dataset.field;
+                            if (field === 'credit' && !coursesList[idx].creditEdited) {
+                                coursesList[idx].creditEdited = true;
+                                const reqTag = el.parentElement.querySelector('span');
+                                if (reqTag) reqTag.remove();
+                            } else if (field === 'letterGrade' && !coursesList[idx].gradeEdited) {
+                                coursesList[idx].gradeEdited = true;
+                                const reqTag = el.parentElement.querySelector('span');
+                                if (reqTag) reqTag.remove();
+                            }
+                        });
+                    }
+                });
+
+                tr.querySelector('.delete-row-btn').addEventListener('click', () => {
+                    coursesList.splice(idx, 1);
+                    recalculateAndRender();
+                    showToast('সাবজেক্টটি তালিকা থেকে সরানো হয়েছে।');
+                });
+
+                coursesTableBody.appendChild(tr);
+            });
+
+            // Append "+ নতুন সাবজেক্ট যোগ করুন" button row right after the last subject row (above Total footer)
+            const addRowTr = document.createElement('tr');
+            addRowTr.className = 'bg-slate-50/70 hover:bg-indigo-50/40 transition-colors';
+            addRowTr.innerHTML = `
+                <td colspan="${isSchool ? 9 : 10}" class="py-2.5 px-3 sm:px-4 text-center sm:text-left">
+                    <button type="button" class="dynamic-add-row-btn inline-flex items-center gap-1.5 bg-slate-900 hover:bg-indigo-600 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-xs transition cursor-pointer">
+                        <span>+ নতুন সাবজেক্ট যোগ করুন</span>
+                    </button>
+                </td>
+            `;
+            addRowTr.querySelector('.dynamic-add-row-btn').addEventListener('click', addNewSubjectRow);
+            coursesTableBody.appendChild(addRowTr);
+        }
+
+        // ================= EVENT LISTENERS (UPLOAD, PASTE, SAMPLE, EXPORT) =================
+        resultFileInput.addEventListener('change', e => {
+            if (e.target.files.length > 0) {
+                processUploadedResultImages(e.target.files);
+                resultFileInput.value = '';
+            }
+        });
+
+        resultDropzone.addEventListener('dragover', e => {
+            e.preventDefault();
+            resultDropzone.classList.add('border-indigo-600', 'bg-indigo-100/60');
+        });
+        resultDropzone.addEventListener('dragleave', () => {
+            resultDropzone.classList.remove('border-indigo-600', 'bg-indigo-100/60');
+        });
+        resultDropzone.addEventListener('drop', e => {
+            e.preventDefault();
+            resultDropzone.classList.remove('border-indigo-600', 'bg-indigo-100/60');
+            if (e.dataTransfer.files.length > 0) {
+                processUploadedResultImages(e.dataTransfer.files);
+            }
+        });
+
+        // Ctrl + V Screenshot Paste
+        window.addEventListener('paste', e => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+            const pastedFiles = [];
+            for (const item of items) {
+                if (item.type.startsWith('image/')) {
+                    const file = item.getAsFile();
+                    if (file) pastedFiles.push(file);
+                }
+            }
+            if (pastedFiles.length > 0) {
+                processUploadedResultImages(pastedFiles);
+                showToast('ক্লিপবোর্ড থেকে রেজাল্ট শিটের ছবি নেওয়া হয়েছে!');
+            }
+        });
+
+        // Load Sample Result (University 4.00 OR School/College 5.00)
+        document.getElementById('load-sample-btn').addEventListener('click', () => {
+            if (eduSystem === 'school') {
+                const hscRows = [
+                    { courseCode: '101', courseName: 'Bangla', credit: 0, courseType: 'Compulsory', letterGrade: 'A+' },
+                    { courseCode: '107', courseName: 'English', credit: 0, courseType: 'Compulsory', letterGrade: 'A' },
+                    { courseCode: '275', courseName: 'ICT', credit: 0, courseType: 'Compulsory', letterGrade: 'A+' },
+                    { courseCode: '174', courseName: 'Physics', credit: 0, courseType: 'Compulsory', letterGrade: 'A+' },
+                    { courseCode: '176', courseName: 'Chemistry', credit: 0, courseType: 'Compulsory', letterGrade: 'A' },
+                    { courseCode: '178', courseName: 'Biology', credit: 0, courseType: 'Compulsory', letterGrade: 'A+' },
+                    { courseCode: '265', courseName: 'Higher Mathematics (4th Subject)', credit: 0, courseType: 'Optional', letterGrade: 'A+' }
+                ];
+                coursesList = hscRows.map(r => normalizeCourseItem(r, 'HSC Sample'));
+                recalculateAndRender();
+                showToast('HSC (৫.০০ স্কেল) নমুনা মার্কশিট লোড হয়েছে!');
+                return;
+            }
+
+            const sampleRows = [
+                { courseCode: 'CSE 101', courseName: 'Structured Programming', credit: 3.00, courseType: 'Theoretical', letterGrade: 'A+' },
+                { courseCode: 'CSE 102', courseName: 'Structured Programming Lab', credit: 1.50, courseType: 'Sessional', letterGrade: 'A+' },
+                { courseCode: 'MAT 101', courseName: 'Differential & Integral Calculus', credit: 3.00, courseType: 'Theoretical', letterGrade: 'A' },
+                { courseCode: 'PHY 101', courseName: 'Engineering Physics', credit: 3.00, courseType: 'Theoretical', letterGrade: 'B+' },
+                { courseCode: 'PHY 102', courseName: 'Engineering Physics Lab', credit: 1.50, courseType: 'Sessional', letterGrade: 'A' },
+                { courseCode: 'ENG 101', courseName: 'Technical English', credit: 2.00, courseType: 'Theoretical', letterGrade: 'A-' }
+            ];
+            coursesList = sampleRows.map(r => normalizeCourseItem(r, 'Sample Result Sheet'));
+            recalculateAndRender();
+            showToast('নমুনা রেজাল্ট শিট লোড হয়েছে!');
+        });
+
+        // Exclude F Grade Checkbox & School Fail Lock Checkbox
+        excludeFChk.addEventListener('change', recalculateAndRender);
+        schoolFailLockChk.addEventListener('change', recalculateAndRender);
+
+        // University Calculation Mode Switcher (All / Theoretical / Sessional)
+        document.querySelectorAll('.calc-mode-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                calcMode = btn.dataset.calcMode;
+                document.querySelectorAll('.calc-mode-btn').forEach(b => {
+                    b.className = 'calc-mode-btn px-2.5 py-1 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition cursor-pointer';
+                });
+                btn.className = 'calc-mode-btn active px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-xs transition cursor-pointer';
+                recalculateAndRender();
+            });
+        });
+
+        // Add Manual Subject Row Helper & Initial Binding
+        function addNewSubjectRow() {
+            coursesList.push({
+                id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random()}`,
+                courseCode: '',
+                courseName: '',
+                credit: eduSystem === 'school' ? 0 : 3.00,
+                courseType: 'Theoretical',
+                subjectRole: 'Compulsory',
+                repeatStatus: 'Regular',
+                letterGrade: 'A+',
+                sourceLabel: 'Manual'
+            });
+            recalculateAndRender();
+            showToast('নতুন সারি যোগ হয়েছে — শুধু ক্রেডিট ও গ্রেড (Required) দিলেই হিসাব হয়ে যাবে!');
+            const tableScroller = coursesTableBody.closest('.overflow-y-auto');
+            if (tableScroller) {
+                tableScroller.scrollTop = tableScroller.scrollHeight;
+            }
+        }
+
+        const initialAddBtn = document.getElementById('add-manual-row-btn');
+        if (initialAddBtn) {
+            initialAddBtn.addEventListener('click', addNewSubjectRow);
+        }
+
+        // Clear All Courses & Images Button
+        document.getElementById('clear-all-btn').addEventListener('click', () => {
+            coursesList = [];
+            uploadedImages = [];
+            ocrVerifyBanner.classList.add('hidden');
+            renderUploadedThumbs();
+            recalculateAndRender();
+            showToast('সব ডেটা মুছে ফেলা হয়েছে।');
+        });
+
+        // 1:1 Square (1080x1080, 2x Retina) High-Resolution Emerald & Golden Result Card Generator
+        const cardNameModal = document.getElementById('card-name-modal');
+        const cardStudentNameInput = document.getElementById('card-student-name-input');
+
+        document.getElementById('download-png-btn').addEventListener('click', () => {
+            if (coursesList.length === 0) {
+                showToast('কার্ড ডাউনলোডের জন্য আগে রেজাল্ট যোগ করুন।');
+                return;
+            }
+            cardNameModal.classList.remove('hidden');
+            setTimeout(() => cardStudentNameInput.focus(), 50);
+        });
+
+        document.getElementById('close-card-name-modal').addEventListener('click', () => {
+            cardNameModal.classList.add('hidden');
+        });
+        cardNameModal.addEventListener('click', e => {
+            if (e.target === cardNameModal) cardNameModal.classList.add('hidden');
+        });
+
+        cardStudentNameInput.addEventListener('keydown', e => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                cardNameModal.classList.add('hidden');
+                generateAndDownloadSquareResultCard(cardStudentNameInput.value.trim());
+            }
+        });
+
+        document.getElementById('skip-card-name-btn').addEventListener('click', () => {
+            cardNameModal.classList.add('hidden');
+            generateAndDownloadSquareResultCard('');
+        });
+
+        document.getElementById('confirm-card-download-btn').addEventListener('click', () => {
+            cardNameModal.classList.add('hidden');
+            generateAndDownloadSquareResultCard(cardStudentNameInput.value.trim());
+        });
+
+        function wrapCanvasLines(ctx, text, maxWidth) {
+            const words = text.split(/\s+/);
+            const lines = [];
+            let currentLine = words[0] || '';
+            for (let i = 1; i < words.length; i++) {
+                const testLine = currentLine + ' ' + words[i];
+                if (ctx.measureText(testLine).width <= maxWidth) {
+                    currentLine = testLine;
+                } else {
+                    lines.push(currentLine);
+                    currentLine = words[i];
+                }
+            }
+            if (currentLine) lines.push(currentLine);
+            return lines;
+        }
+
+        function generateAndDownloadSquareResultCard(studentName) {
+            const isSchool = eduSystem === 'school';
+            const gpaNum = parseFloat(heroCgpaValue.textContent) || 0;
+            const failSubjects = coursesList.filter(c => c.letterGrade === 'F');
+            const hasFail = failSubjects.length > 0;
+            const hasSessional = !isSchool && coursesList.some(c => c.courseType === 'Sessional');
+
+            const namePrefix = studentName ? `অভিনন্দন, ${studentName}!` : 'অভিনন্দন!';
+            let subWish = 'আপনার ফলাফল সফলভাবে সম্পন্ন হয়েছে।';
+            if (hasFail) {
+                subWish = 'হতাশ হবেন না — সামনে আরও ভালো করার সুযোগ রয়েছে!';
+            } else if ((!isSchool && gpaNum >= 3.75) || (isSchool && gpaNum >= 4.80)) {
+                subWish = 'অসাধারণ সাফল্য! আপনার কঠোর পরিশ্রমের দারুণ প্রতিফলন।';
+            } else if ((!isSchool && gpaNum >= 3.25) || (isSchool && gpaNum >= 4.00)) {
+                subWish = 'দারুণ ফলাফল, ভবিষ্যতের জন্য অনেক শুভকামনা!';
+            }
+            const fullGreeting = hasFail
+                ? (studentName ? `${studentName}, ${subWish}` : subWish)
+                : `${namePrefix} ${subWish}`;
+
+            // Logical 1080x1080 Square Canvas rendered at 2x Retina (2160x2160 actual pixels)
+            const size = 1080;
+            const scale = 2;
+            const canvas = document.createElement('canvas');
+            canvas.width = size * scale;
+            canvas.height = size * scale;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(scale, scale);
+
+            // Rich Emerald Green Radial + Linear Background
+            const bgGrad = ctx.createLinearGradient(0, 0, size, size);
+            bgGrad.addColorStop(0, '#022c22');
+            bgGrad.addColorStop(0.5, '#064e3b');
+            bgGrad.addColorStop(1, '#022c22');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, size, size);
+
+            // Ambient Golden Glows
+            const glow1 = ctx.createRadialGradient(540, 440, 40, 540, 440, 460);
+            glow1.addColorStop(0, 'rgba(245, 158, 11, 0.22)');
+            glow1.addColorStop(1, 'rgba(245, 158, 11, 0)');
+            ctx.fillStyle = glow1;
+            ctx.fillRect(0, 0, size, size);
+
+            // Double Luxury Golden Ornamental Frame
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.55)';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.roundRect(36, 36, size - 72, size - 72, 36);
+            ctx.stroke();
+
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.22)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.roundRect(52, 52, size - 104, size - 104, 26);
+            ctx.stroke();
+
+            // Top Scale Pill Badge
+            const pillText = isSchool ? 'SSC / HSC RESULT • 5.00 SCALE' : 'ACADEMIC RESULT • 4.00 SCALE';
+            ctx.font = 'bold 20px "Inter", monospace';
+            const pillW = ctx.measureText(pillText).width + 56;
+            const pillX = (size - pillW) / 2;
+            ctx.fillStyle = 'rgba(251, 191, 36, 0.14)';
+            ctx.beginPath();
+            ctx.roundRect(pillX, 88, pillW, 46, 23);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.45)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.fillStyle = '#fcd34d';
+            ctx.textAlign = 'center';
+            ctx.fillText(pillText, size / 2, 118);
+
+            // Personalized Greeting Message (Wrapped nicely in center)
+            ctx.fillStyle = '#fef3c7';
+            ctx.font = 'bold 34px "Hind Siliguri", "Inter", sans-serif';
+            const greetingLines = wrapCanvasLines(ctx, fullGreeting, size - 180);
+            let textY = 200;
+            greetingLines.slice(0, 2).forEach(line => {
+                ctx.fillText(line, size / 2, textY);
+                textY += 46;
+            });
+
+            // Centerpiece Golden GPA / CGPA Medallion Card
+            const medW = 460;
+            const medH = 260;
+            const medX = (size - medW) / 2;
+            const medY = 310;
+
+            ctx.save();
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+            ctx.shadowBlur = 32;
+            ctx.shadowOffsetY = 14;
+            const goldGrad = ctx.createLinearGradient(medX, medY, medX + medW, medY + medH);
+            goldGrad.addColorStop(0, '#fbbf24');
+            goldGrad.addColorStop(0.5, '#f59e0b');
+            goldGrad.addColorStop(1, '#d97706');
+            ctx.fillStyle = goldGrad;
+            ctx.beginPath();
+            ctx.roundRect(medX, medY, medW, medH, 40);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(medX + 8, medY + 8, medW - 16, medH - 16, 33);
+            ctx.stroke();
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+            ctx.font = 'bold 22px "Hind Siliguri", "Inter", sans-serif';
+            ctx.fillText(isSchool ? 'অর্জিত বোর্ড GPA' : 'অর্জিত CGPA / GPA', size / 2, medY + 54);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 132px monospace';
+            ctx.fillText(heroCgpaValue.textContent, size / 2, medY + 185);
+
+            ctx.fillStyle = 'rgba(254, 243, 199, 0.95)';
+            ctx.font = 'bold 20px "Hind Siliguri", "Inter", sans-serif';
+            ctx.fillText(isSchool ? '৫.০০ স্কেলে (Out of 5.00)' : '৪.০০ স্কেলে (Out of 4.00)', size / 2, medY + 232);
+
+            // Bottom Breakdown Metric Cards (2x2 Grid for perfect 1:1 balance)
+            const metrics = isSchool ? [
+                { label: 'মোট বিষয় (Subjects)', val: statTotalCredits.textContent },
+                { label: 'মোট অর্জিত পয়েন্ট', val: statTotalPoints.textContent },
+                { label: '৪র্থ বিষয় ছাড়া GPA', val: statTheoryGpa.textContent },
+                { label: '৪র্থ বিষয় বোনাস', val: statSessionalGpa.textContent }
+            ] : [
+                { label: 'মোট ক্রেডিট (Total Credit)', val: statTotalCredits.textContent },
+                { label: 'মোট পয়েন্ট (Total Points)', val: statTotalPoints.textContent },
+                { label: 'Theoretical CGPA', val: statTheoryGpa.textContent },
+                hasSessional
+                    ? { label: 'Sessional CGPA', val: statSessionalGpa.textContent }
+                    : { label: 'মোট কোর্স (Courses)', val: `${coursesList.length} টি` }
+            ];
+
+            const gridX = 96;
+            const gridY = 620;
+            const gap = 24;
+            const cardW = (size - gridX * 2 - gap) / 2;
+            const cardH = 132;
+
+            metrics.forEach((m, idx) => {
+                const col = idx % 2;
+                const row = Math.floor(idx / 2);
+                const bx = gridX + col * (cardW + gap);
+                const by = gridY + row * (cardH + gap);
+
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+                ctx.beginPath();
+                ctx.roundRect(bx, by, cardW, cardH, 24);
+                ctx.fill();
+
+                ctx.strokeStyle = 'rgba(251, 191, 36, 0.30)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                ctx.textAlign = 'left';
+                ctx.fillStyle = '#a7f3d0';
+                ctx.font = '600 21px "Hind Siliguri", "Inter", sans-serif';
+                ctx.fillText(m.label, bx + 28, by + 48);
+
+                ctx.fillStyle = '#fbbf24';
+                ctx.font = 'bold 38px monospace';
+                ctx.fillText(m.val, bx + 28, by + 102);
+            });
+
+            // Optional Failed Subjects Alert Strip at Bottom
+            if (hasFail) {
+                const failY = 924;
+                ctx.fillStyle = 'rgba(244, 63, 94, 0.24)';
+                ctx.beginPath();
+                ctx.roundRect(96, failY, size - 192, 54, 16);
+                ctx.fill();
+
+                ctx.strokeStyle = 'rgba(251, 113, 133, 0.45)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#fecdd3';
+                ctx.font = 'bold 22px "Hind Siliguri", "Inter", sans-serif';
+                ctx.fillText(`⚠ অকৃতকার্য (Failed): ${failSubjects.length}টি বিষয়ে F গ্রেড রয়েছে`, size / 2, failY + 35);
+            } else {
+                ctx.textAlign = 'center';
+                ctx.fillStyle = 'rgba(167, 243, 208, 0.65)';
+                ctx.font = '600 20px "Hind Siliguri", "Inter", sans-serif';
+                ctx.fillText('Smart AI & OCR CGPA Calculator • Verified Scorecard', size / 2, 965);
+            }
+
+            canvas.toBlob(blob => {
+                if (!blob) return;
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const safeNamePart = studentName ? `${studentName.replace(/[^a-zA-Z0-9\u0980-\u09FF_-]/g, '_')}_` : '';
+                a.href = url;
+                a.download = `${safeNamePart}Result_Card_1080x1080_${heroCgpaValue.textContent}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast('১:১ স্কয়ার (1080×1080) রেজাল্ট কার্ড ডাউনলোড হয়েছে!');
+            }, 'image/png');
+        }
+
+        // Copy Summary
+        document.getElementById('copy-summary-btn').addEventListener('click', () => {
+            if (coursesList.length === 0) {
+                showToast('কপি করার মতো কোনো ফলাফল নেই।');
+                return;
+            }
+            const isSchool = eduSystem === 'school';
+            const summary = isSchool ? [
+                `=== স্কুল/কলেজ GPA ফলাফল রিপোর্ট (5.00 Scale) ===`,
+                `অর্জিত বোর্ড GPA: ${heroCgpaValue.textContent}`,
+                `৪র্থ বিষয় ছাড়া GPA: ${statTheoryGpa.textContent}`,
+                `মোট বিষয়: ${statTotalCredits.textContent} (${statSubjectCount.textContent})`,
+                `মোট অর্জিত পয়েন্ট: ${statTotalPoints.textContent}`
+            ].join('\n') : [
+                `=== CGPA / GPA ফলাফল রিপোর্ট ===`,
+                `মোড: ${cgpaModeBadge.textContent}`,
+                `অর্জিত GPA/CGPA: ${heroCgpaValue.textContent} (4.00 Scale)`,
+                `মোট ক্রেডিট: ${statTotalCredits.textContent}`,
+                `মোট গ্রেড পয়েন্ট: ${statTotalPoints.textContent}`,
+                `শুধু Theoretical GPA: ${statTheoryGpa.textContent} (${statTheoryCredits.textContent})`,
+                `শুধু Sessional GPA: ${statSessionalGpa.textContent} (${statSessionalCredits.textContent})`
+            ].join('\n');
+            copyTextSafe(summary);
+            showToast('ফলাফলের সারসংক্ষেপ কপি হয়েছে!');
+        });
+
+        // Export CSV
+        document.getElementById('export-csv-btn').addEventListener('click', () => {
+            if (coursesList.length === 0) {
+                showToast('ডাউনলোড করার মতো কোনো ডেটা নেই।');
+                return;
+            }
+            const gradeMap = getActiveGradeMap();
+            const isSchool = eduSystem === 'school';
+            const rows = isSchool
+                ? [['SL', 'Subject Code', 'Subject Name', 'Role', 'Letter Grade', 'Grade Point', 'Net Points']]
+                : [['SL', 'Course Code', 'Course Name', 'Credit', 'Type', 'Letter Grade', 'Grade Point', 'Earned Points']];
+            coursesList.forEach((c, idx) => {
+                const gp = gradeMap[c.letterGrade] ?? 0;
+                if (isSchool) {
+                    const net = c.subjectRole === 'Optional' ? Math.max(0, gp - 2.00) : gp;
+                    rows.push([
+                        idx + 1,
+                        `"${c.courseCode.replace(/"/g, '""')}"`,
+                        `"${c.courseName.replace(/"/g, '""')}"`,
+                        c.subjectRole,
+                        c.letterGrade,
+                        gp.toFixed(2),
+                        net.toFixed(2)
+                    ]);
+                } else {
+                    rows.push([
+                        idx + 1,
+                        `"${c.courseCode.replace(/"/g, '""')}"`,
+                        `"${c.courseName.replace(/"/g, '""')}"`,
+                        c.credit.toFixed(2),
+                        c.courseType,
+                        c.letterGrade,
+                        gp.toFixed(2),
+                        (c.credit * gp).toFixed(2)
+                    ]);
+                }
+            });
+            rows.push([]);
+            rows.push(['', '', isSchool ? 'Board GPA (5.00)' : 'Overall GPA (All)', statTotalCredits.textContent, '', '', '', heroCgpaValue.textContent]);
+            if (!isSchool) {
+                rows.push(['', '', 'Theoretical Only GPA', '', '', '', '', statTheoryGpa.textContent]);
+                rows.push(['', '', 'Sessional Only GPA', '', '', '', '', statSessionalGpa.textContent]);
+            }
+
+            const csv = '\uFEFF' + rows.map(r => r.join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `CGPA_Report_${Date.now()}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast('CSV ফাইল ডাউনলোড হয়েছে!');
+        });
+
+        // ================= UTILITIES =================
+        function copyTextSafe(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        let toastTimer;
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+        }
+    </script>
+</body>
+</html>
