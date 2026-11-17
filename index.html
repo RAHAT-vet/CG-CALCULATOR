@@ -2,11 +2,11 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#EDF1EF" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0B1411" media="(prefers-color-scheme: dark)">
     <title>Smart AI & OCR CGPA Calculator (UGC 4.00 & SSC/HSC 5.00)</title>
-
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Vercel Speed Insights & Web Analytics -->
     <script>
@@ -19,419 +19,865 @@
     <!-- Tesseract.js (Offline/Browser Fallback OCR Engine) -->
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
-    <!-- Google Fonts: Hind Siliguri & Inter -->
+    <!-- Fonts: Hind Siliguri (UI + Bangla) and Fraunces (score figure) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['"Hind Siliguri"', '"Inter"', 'sans-serif'],
-                        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
-                    }
-                }
-            }
-        }
-    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Hind+Siliguri:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        /* ================= DESIGN TOKENS ================= */
+        :root {
+            --bg: #EDF1EF;
+            --surface: #FFFFFF;
+            --surface-2: #F4F7F5;
+            --line: #D8E1DC;
+            --line-2: #E7EDE9;
+            --ink: #0E1E19;
+            --ink-2: #2B3D36;
+            --muted: #586963;
+            --brand: #0B6B54;
+            --brand-strong: #08503F;
+            --brand-soft: #E0F0E9;
+            --on-brand: #FFFFFF;
+            --gold: #8F5B06;
+            --gold-soft: #FBF0D8;
+            --gold-line: #E2B961;
+            --rose: #B3261E;
+            --rose-soft: #FCE8E6;
+            --blue: #28578A;
+            --blue-soft: #E3EDF7;
+            --ring: rgba(11, 107, 84, .28);
+            --shadow: 0 1px 2px rgba(14, 30, 25, .05), 0 10px 28px -16px rgba(14, 30, 25, .22);
+            --font: "Hind Siliguri", "Noto Sans Bengali", system-ui, -apple-system, "Segoe UI", sans-serif;
+            --serif: "Fraunces", "Hind Siliguri", Georgia, serif;
+            color-scheme: light dark;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0B1411;
+                --surface: #121D19;
+                --surface-2: #172420;
+                --line: #25372F;
+                --line-2: #1D2D26;
+                --ink: #E8F0EC;
+                --ink-2: #C3D2CB;
+                --muted: #93A69E;
+                --brand: #38C29A;
+                --brand-strong: #6FDDBA;
+                --brand-soft: #123A2F;
+                --on-brand: #04201A;
+                --gold: #EBC067;
+                --gold-soft: #3A2B0C;
+                --gold-line: #8C6A1F;
+                --rose: #FF8F86;
+                --rose-soft: #3C1815;
+                --blue: #8DBBEB;
+                --blue-soft: #14283D;
+                --ring: rgba(56, 194, 154, .38);
+                --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 10px 28px -16px rgba(0, 0, 0, .7);
+            }
+        }
+
+        /* ================= BASE ================= */
+        *, *::before, *::after { box-sizing: border-box; }
+        html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+        html.modal-open { overflow: hidden; }
+        body {
+            margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+            background: var(--bg); color: var(--ink);
+            font-family: var(--font); font-size: 15px; line-height: 1.6;
+            -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+            font-variant-numeric: tabular-nums;
+        }
+        h1, h2, h3, p { margin: 0; }
+        button, input, select { font: inherit; color: inherit; }
+        button { cursor: pointer; }
+        .hidden { display: none !important; }
+        .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+        svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+        :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+        .skip { position: absolute; left: 12px; top: -48px; z-index: 100; background: var(--ink); color: var(--surface); padding: 8px 14px; border-radius: 8px; text-decoration: none; font-weight: 600; transition: top .15s; }
+        .skip:focus { top: 10px; }
+        .wrap { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+        @media (min-width: 640px) { .wrap { padding: 0 24px; } }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #64748b; border-radius: 9999px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 99px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+        /* ================= BUTTONS ================= */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            min-height: 40px; padding: 0 16px; border-radius: 11px; border: 1px solid transparent;
+            font-weight: 600; font-size: 14px; line-height: 1; white-space: nowrap;
+            background: none; transition: background-color .15s, border-color .15s, transform .08s, box-shadow .15s;
+        }
+        .btn:active { transform: translateY(1px); }
+        .btn-primary { background: var(--brand); color: var(--on-brand); box-shadow: 0 1px 0 rgba(255,255,255,.18) inset, 0 6px 14px -8px var(--brand); }
+        .btn-primary:hover { background: var(--brand-strong); }
+        @media (prefers-color-scheme: dark) { .btn-primary:hover { background: #55D3AE; } }
+        .btn-ghost { background: var(--surface); border-color: var(--line); color: var(--ink-2); }
+        .btn-ghost:hover { background: var(--surface-2); border-color: var(--muted); }
+        .btn-soft { background: var(--surface-2); color: var(--ink-2); border-color: var(--line-2); }
+        .btn-soft:hover { background: var(--brand-soft); color: var(--brand); border-color: transparent; }
+        .btn-danger { color: var(--rose); background: transparent; border-color: transparent; }
+        .btn-danger:hover { background: var(--rose-soft); }
+        .btn-sm { min-height: 34px; padding: 0 12px; font-size: 13px; border-radius: 9px; }
+        .icon-btn {
+            display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 9px;
+            border: 0; background: transparent; color: var(--muted); transition: background-color .15s, color .15s;
+        }
+        .icon-btn:hover { background: var(--surface-2); color: var(--ink); }
+        .icon-btn.danger:hover { background: var(--rose-soft); color: var(--rose); }
+
+        /* ================= APP BAR ================= */
+        .appbar {
+            position: sticky; top: 0; z-index: 30;
+            background: color-mix(in srgb, var(--surface) 88%, transparent);
+            -webkit-backdrop-filter: saturate(1.4) blur(14px); backdrop-filter: saturate(1.4) blur(14px);
+            border-bottom: 1px solid var(--line);
+        }
+        .appbar-in { min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .mark { width: 38px; height: 38px; border-radius: 11px; background: var(--brand); color: var(--on-brand); display: grid; place-items: center; flex: none; }
+        .mark svg { width: 22px; height: 22px; }
+        .brand h1 { font-size: 17px; font-weight: 700; letter-spacing: -.01em; line-height: 1.2; white-space: nowrap; }
+        .brand-sub { font-size: 12.5px; color: var(--muted); line-height: 1.2; }
+        .chip { display: none; font-size: 12.5px; font-weight: 600; color: var(--brand); background: var(--brand-soft); padding: 3px 11px; border-radius: 99px; white-space: nowrap; }
+        @media (min-width: 720px) { .chip { display: inline-block; } }
+        .appbar-actions { display: flex; gap: 8px; }
+        .appbar-actions .btn-label { display: none; }
+        .appbar-actions .btn { padding: 0 11px; }
+        @media (min-width: 640px) { .appbar-actions .btn-label { display: inline; } .appbar-actions .btn { padding: 0 15px; } }
+        @media (max-width: 380px) { .brand-sub { display: none; } }
+
+        /* ================= LAYOUT ================= */
+        .main { flex: 1; padding-top: 20px; padding-bottom: 40px; display: grid; gap: 16px; align-content: start; }
+        .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
+        .panel-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .panel-h h2 { font-size: 16px; font-weight: 700; letter-spacing: -.005em; }
+        .dash { display: grid; gap: 16px; }
+        @media (min-width: 1024px) { .dash { grid-template-columns: 5fr 7fr; align-items: stretch; } }
+
+        /* Level switcher */
+        .levelbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 20px; }
+        #edu-system-hint { font-size: 13.5px; color: var(--muted); }
+        .seg { display: inline-flex; gap: 3px; padding: 3px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 13px; max-width: 100%; }
+        .seg button {
+            border: 0; background: transparent; color: var(--ink-2); border-radius: 10px;
+            padding: 8px 16px; font-weight: 600; font-size: 14px; line-height: 1.25; text-align: left;
+            transition: background-color .15s, color .15s, box-shadow .15s;
+        }
+        .seg button:hover { background: var(--surface); }
+        .seg button.active { background: var(--brand); color: var(--on-brand); box-shadow: 0 4px 12px -6px var(--brand); }
+        .seg button small { display: block; font-size: 12px; font-weight: 500; opacity: .78; }
+        .seg-sm button { padding: 6px 13px; font-size: 13.5px; }
+        .levelbar .seg { width: 100%; }
+        .levelbar .seg button { flex: 1; }
+        @media (min-width: 720px) { .levelbar .seg { width: auto; } .levelbar .seg button { flex: none; } }
+
+        /* ================= UPLOAD ================= */
+        .upload { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+        .kbd-hint { font-size: 12.5px; color: var(--muted); display: none; }
+        .kbd-hint kbd { font: inherit; font-weight: 600; background: var(--surface-2); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; padding: 0 6px; color: var(--ink-2); }
+        @media (hover: hover) and (pointer: fine) { .kbd-hint { display: inline; } }
+        .drop {
+            display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 6px;
+            flex: 1; min-height: 168px; padding: 22px 16px; cursor: pointer;
+            border: 1.5px dashed var(--gold-line); border-radius: 14px; background: var(--surface-2);
+            transition: border-color .15s, background-color .15s;
+        }
+        .drop:hover, .drop.is-over { border-color: var(--brand); background: var(--brand-soft); border-style: solid; }
+        .drop:focus-within { outline: 2px solid var(--brand); outline-offset: 2px; }
+        .drop-ico { width: 46px; height: 46px; border-radius: 13px; background: var(--surface); border: 1px solid var(--line); color: var(--brand); display: grid; place-items: center; margin-bottom: 4px; }
+        .drop-ico svg { width: 22px; height: 22px; }
+        .drop strong { font-size: 15px; font-weight: 600; }
+        .drop span.sub { font-size: 13px; color: var(--muted); max-width: 32ch; }
+
+        .progress { background: var(--brand-soft); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; }
+        .progress-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 13.5px; font-weight: 600; color: var(--brand-strong); }
+        @media (prefers-color-scheme: dark) { .progress-top { color: var(--brand); } }
+        #ocr-progress-label { display: flex; align-items: center; gap: 9px; min-width: 0; }
+        .progress-track { height: 6px; background: color-mix(in srgb, var(--brand) 20%, transparent); border-radius: 99px; overflow: hidden; }
+        #ocr-progress-bar { height: 100%; background: var(--brand); border-radius: 99px; transition: width .25s ease; }
+        .spinner { width: 14px; height: 14px; flex: none; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--brand) 30%, transparent); border-top-color: var(--brand); animation: spin .7s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .thumbs-label { font-size: 13px; font-weight: 600; color: var(--muted); display: block; margin-bottom: 6px; }
+        #uploaded-thumbs-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .thumb { display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface-2); transition: border-color .15s; }
+        .thumb:hover { border-color: var(--brand); }
+        .thumb img { width: 36px; height: 36px; object-fit: cover; border-radius: 8px; }
+        .thumb span { font-size: 13px; font-weight: 500; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .upload-foot { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line-2); display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
+
+        /* ================= RESULT ================= */
+        .result { padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+        .modebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+        .modebar .lbl { font-size: 13.5px; font-weight: 600; color: var(--muted); }
+        .notice { display: flex; align-items: flex-start; gap: 10px; padding: 11px 14px; border-radius: 12px; font-size: 13.5px; line-height: 1.55; }
+        .notice svg { margin-top: 2px; }
+        .notice-ok { background: var(--brand-soft); color: var(--brand-strong); justify-content: space-between; flex-wrap: wrap; align-items: center; }
+        @media (prefers-color-scheme: dark) { .notice-ok { color: var(--ink-2); } }
+        .notice-ok code { font: inherit; font-weight: 700; }
+        .notice-warn { background: var(--gold-soft); color: var(--gold); border-bottom: 1px solid var(--gold-line); border-radius: 0; padding: 12px 18px; align-items: center; justify-content: space-between; }
+        .notice-warn p { flex: 1; }
+        .notice-warn strong { font-weight: 700; }
+        .notice-warn .icon-btn { color: inherit; }
+        .notice-warn .icon-btn:hover { background: color-mix(in srgb, var(--gold) 14%, transparent); color: inherit; }
+
+        .score { display: grid; gap: 12px; }
+        @media (min-width: 720px) { .score { grid-template-columns: 5fr 7fr; } }
+        @media (min-width: 1024px) and (max-width: 1180px) { .score { grid-template-columns: 1fr; } }
+        .hero {
+            --tier: #1B2D27;
+            position: relative; overflow: hidden; border-radius: 16px; padding: 18px 20px 20px;
+            color: #fff; background-color: var(--tier);
+            background-image: repeating-linear-gradient(0deg, rgba(255,255,255,.055) 0 1px, transparent 1px 30px);
+            display: flex; flex-direction: column; gap: 4px; min-height: 196px;
+            transition: background-color .5s ease;
+        }
+        .hero[data-tier="top"] { --tier: #0B6B54; }
+        .hero[data-tier="good"] { --tier: #1E5E78; }
+        .hero[data-tier="mid"] { --tier: #85560A; }
+        .hero[data-tier="low"] { --tier: #A12B22; }
+        .hero-badge { align-self: flex-start; font-size: 12.5px; font-weight: 600; background: rgba(255,255,255,.16); padding: 2px 11px; border-radius: 99px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #hero-cgpa-value { font-family: var(--serif); font-weight: 700; font-size: clamp(4.25rem, 10vw, 5.75rem); line-height: 1; letter-spacing: -.03em; margin-top: auto; padding-top: 14px; font-feature-settings: "lnum", "tnum"; }
+        #hero-cgpa-value.bump { animation: bump .45s ease; }
+        @keyframes bump { 0% { transform: translateY(6px); opacity: .55; } 100% { transform: none; opacity: 1; } }
+        #hero-scale-caption { font-size: 13.5px; color: rgba(255,255,255,.86); }
+        .meter { height: 5px; border-radius: 99px; background: rgba(255,255,255,.22); margin-top: 10px; overflow: hidden; }
+        .meter i { display: block; height: 100%; width: 0; background: #fff; border-radius: 99px; transition: width .6s cubic-bezier(.2,.8,.2,1); }
+        .meter-scale { display: flex; justify-content: space-between; font-size: 12px; color: rgba(255,255,255,.7); }
+
+        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .stat { position: relative; background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 13px; padding: 12px 14px; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+        .stat-l { font-size: 13px; color: var(--muted); line-height: 1.35; }
+        .stat-v { font-size: 22px; font-weight: 700; line-height: 1.25; letter-spacing: -.01em; }
+        .stat-s { font-size: 12.5px; color: var(--muted); line-height: 1.35; }
+        .stat.a::before, .stat.b::before { content: ""; position: absolute; top: 14px; right: 14px; width: 8px; height: 8px; border-radius: 50%; }
+        .stat.a::before { background: var(--blue); }
+        .stat.b::before { background: var(--brand); }
+
+        .result-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; padding-top: 16px; border-top: 1px solid var(--line-2); margin-top: auto; }
+        .result-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+        @media (max-width: 520px) { .result-actions { width: 100%; } .result-actions .btn-primary { flex: 1 1 100%; } .result-actions .btn-ghost { flex: 1; } }
+        .switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; font-size: 14px; font-weight: 500; color: var(--ink-2); }
+        .switch input { appearance: none; -webkit-appearance: none; width: 40px; height: 24px; border-radius: 99px; background: var(--line); position: relative; cursor: pointer; margin: 0; flex: none; transition: background-color .15s; }
+        .switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s; }
+        .switch input:checked { background: var(--brand); }
+        .switch input:checked::after { transform: translateX(16px); }
+        .switch input:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+        /* ================= TABLE ================= */
+        .table-panel { overflow: hidden; }
+        .table-head { padding: 16px 18px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; border-bottom: 1px solid var(--line); }
+        .table-head h2 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+        #table-row-badge { font-size: 12.5px; font-weight: 700; background: var(--brand-soft); color: var(--brand); padding: 1px 10px; border-radius: 99px; min-width: 26px; text-align: center; }
+        .table-head p { font-size: 13.5px; color: var(--muted); margin-top: 2px; }
+        .tablewrap { overflow: auto; max-height: 600px; }
+        table.grid { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+        .grid th { position: sticky; top: 0; z-index: 2; background: var(--surface-2); color: var(--muted); font-size: 13px; font-weight: 600; text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+        .grid th small { font-weight: 400; opacity: .8; }
+        .grid th.col-grade, .grid th.col-credit { text-align: center; }
+        .grid td { padding: 8px 12px; border-bottom: 1px solid var(--line-2); vertical-align: middle; }
+        .grid tbody tr { transition: background-color .12s; }
+        .grid tbody tr:hover { background: var(--surface-2); }
+        .grid tbody tr.is-muted { opacity: .42; }
+        .grid tbody tr.is-muted:hover { background: transparent; }
+        .idx { display: inline-grid; place-items: center; min-width: 26px; height: 26px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line-2); color: var(--muted); font-size: 12.5px; font-weight: 700; }
+        .c-credit, .c-grade { text-align: center; }
+        .c-pts { font-weight: 700; color: var(--brand); white-space: nowrap; }
+        .c-del { text-align: right; }
+
+        .row-input {
+            width: 100%; min-height: 36px; background: transparent; color: var(--ink);
+            border: 1px solid transparent; border-radius: 9px; padding: 5px 9px; font-size: 14px;
+            transition: border-color .12s, background-color .12s, box-shadow .12s;
+        }
+        .row-input::placeholder { color: var(--muted); opacity: .55; }
+        .row-input:hover { border-color: var(--line); }
+        .row-input:focus { outline: none; background: var(--surface); border-color: var(--brand); box-shadow: 0 0 0 3px var(--ring); }
+        .f-code { min-width: 92px; font-weight: 600; }
+        .f-name { min-width: 190px; }
+        .f-num { width: 78px; text-align: center; font-weight: 700; }
+        select.row-input {
+            appearance: none; -webkit-appearance: none; cursor: pointer; padding-right: 28px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237A8B84' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 8px center; background-size: 14px;
+        }
+        select.row-input option { background: var(--surface); color: var(--ink); }
+        .sel-type { min-width: 132px; font-weight: 600; color: var(--blue); }
+        .sel-type.is-sess { color: var(--brand); }
+        .sel-role { min-width: 190px; font-weight: 600; color: var(--blue); }
+        .sel-role.is-opt { color: var(--gold); background-color: var(--gold-soft); }
+        .sel-status { min-width: 112px; border-radius: 99px; font-size: 13px; font-weight: 600; background-color: var(--brand-soft); color: var(--brand); padding-left: 12px; }
+        .sel-status.is-repeat { background-color: var(--gold-soft); color: var(--gold); }
+        .sel-grade { width: 88px; font-weight: 700; text-align: left; }
+        .sel-grade.is-f { color: var(--rose); }
+        .row-input.needs { background-color: var(--gold-soft); border-color: var(--gold-line); }
+        .field-stack { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
+        .req { font-size: 11.5px; font-weight: 600; color: var(--gold); line-height: 1.2; }
+
+        .gp { display: inline-block; min-width: 52px; text-align: center; padding: 2px 10px; border-radius: 99px; font-size: 13px; font-weight: 700; }
+        .gp-top { background: var(--brand-soft); color: var(--brand); }
+        .gp-good { background: var(--blue-soft); color: var(--blue); }
+        .gp-mid { background: var(--gold-soft); color: var(--gold); }
+        .gp-low { background: color-mix(in srgb, var(--gold-soft) 55%, var(--rose-soft)); color: var(--rose); }
+        .gp-f { background: var(--rose-soft); color: var(--rose); }
+
+        .grid tr.addrow td { background: var(--surface); }
+        .grid tr.addrow:hover { background: transparent; }
+        .grid tfoot td { position: sticky; bottom: 0; z-index: 2; background: var(--surface-2); border-top: 1px solid var(--line); border-bottom: 0; padding: 12px; font-weight: 700; }
+        .grid tfoot .lbl { text-align: right; color: var(--muted); font-weight: 600; font-size: 13.5px; }
+        #footer-total-credits { color: var(--blue); text-align: center; }
+        #footer-total-points { color: var(--brand); }
+
+        .empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 44px 20px 48px; }
+        .empty svg.art { width: 64px; height: 64px; color: var(--line); margin-bottom: 8px; }
+        .empty h3 { font-size: 16px; font-weight: 700; }
+        .empty p { font-size: 14px; color: var(--muted); max-width: 40ch; }
+        .empty-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 12px; }
+
+        /* Mobile: every course becomes a compact card */
+        @media (max-width: 760px) {
+            .tablewrap { max-height: none; overflow: visible; }
+            .grid thead { display: none; }
+            .grid, .grid tbody, .grid tfoot { display: block; }
+            .grid tbody tr { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+            .grid tbody tr.empty-row, .grid tbody tr.addrow { display: block; padding: 0; }
+            .grid tr.addrow td { padding: 12px 16px; }
+            .grid tbody td { display: block; padding: 0; border: 0; text-align: left; }
+            .grid tbody td[data-label]:not([data-label=""])::before { content: attr(data-label); display: block; font-size: 12.5px; font-weight: 600; color: var(--muted); margin-bottom: 3px; }
+            .grid tbody td.c-idx { grid-column: 1; grid-row: 1; align-self: center; }
+            .grid tbody td.c-del { grid-column: 2; grid-row: 1; justify-self: end; }
+            .grid tbody td.c-code, .grid tbody td.c-name { grid-column: 1 / -1; }
+            .grid tbody td.c-credit, .grid tbody td.c-grade { text-align: left; }
+            .field-stack { align-items: flex-start; }
+            .row-input { min-height: 44px; font-size: 16px !important; border-color: var(--line); background-color: var(--surface); }
+            .row-input.needs { border-color: var(--gold-line); background-color: var(--gold-soft); }
+            .sel-status { background-color: var(--brand-soft); border-color: transparent; }
+            .sel-status.is-repeat { background-color: var(--gold-soft); }
+            .f-code, .f-name, .f-num, .sel-grade, .sel-type, .sel-role, .sel-status { width: 100%; min-width: 0; text-align: left; }
+            .grid tbody td.c-gp, .grid tbody td.c-pts { align-self: center; }
+            .grid tfoot tr { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 18px; padding: 14px 16px; background: var(--surface-2); }
+            .grid tfoot td { display: block; position: static; padding: 0; border: 0; text-align: left !important; }
+            .grid tfoot td:empty { display: none; }
+        }
+
+        /* ================= MODALS ================= */
+        .modal { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-end; justify-content: center; background: rgba(6, 16, 12, .62); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); animation: fade .18s ease; }
+        @media (min-width: 640px) { .modal { align-items: center; padding: 24px; } }
+        .sheet {
+            width: 100%; max-width: 540px; max-height: 92dvh; overflow: auto; background: var(--surface); color: var(--ink);
+            border: 1px solid var(--line); border-radius: 22px 22px 0 0; padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px));
+            box-shadow: 0 -10px 40px -12px rgba(0,0,0,.35); animation: sheet-in .26s cubic-bezier(.2,.8,.2,1);
+            display: grid; gap: 16px; outline: none;
+        }
+        @media (min-width: 640px) { .sheet { border-radius: 22px; padding-bottom: 20px; animation-name: pop-in; } }
+        .sheet-wide { max-width: 920px; }
+        .sheet-h { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+        .sheet-h h3 { font-size: 17px; font-weight: 700; line-height: 1.35; }
+        .sheet-h p { font-size: 13.5px; color: var(--muted); margin-top: 2px; }
+        .sheet-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line-2); }
+        .sheet-foot.split { justify-content: space-between; }
+        @keyframes fade { from { opacity: 0; } }
+        @keyframes sheet-in { from { transform: translateY(28px); opacity: .4; } }
+        @keyframes pop-in { from { transform: scale(.97) translateY(8px); opacity: 0; } }
+
+        .field { display: grid; gap: 6px; }
+        .field > label, .field-label { font-size: 13.5px; font-weight: 600; color: var(--ink-2); }
+        .field .help { font-size: 12.5px; color: var(--muted); }
+        .input, .select {
+            width: 100%; min-height: 44px; padding: 8px 13px; border-radius: 11px; border: 1.5px solid var(--line);
+            background: var(--surface-2); color: var(--ink); font-size: 15px; transition: border-color .15s, box-shadow .15s, background-color .15s;
+        }
+        .input:focus, .select:focus { outline: none; border-color: var(--brand); background: var(--surface); box-shadow: 0 0 0 3px var(--ring); }
+        .select { appearance: none; -webkit-appearance: none; padding-right: 36px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237A8B84' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-size: 16px; }
+        .keys { display: grid; gap: 14px; padding: 14px; border: 1px solid var(--line-2); border-radius: 14px; background: var(--surface-2); }
+        .keys .input { background: var(--surface); font-size: 14px; }
+        .privacy { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: var(--muted); line-height: 1.55; }
+        .privacy svg { margin-top: 2px; color: var(--brand); }
+
+        #editable-grade-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .gcell { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 8px 8px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+        .gcell strong { font-size: 16px; font-weight: 700; }
+        .gcell strong.is-f { color: var(--rose); }
+        .gcell input { width: 88px; min-height: 38px; text-align: right; font-weight: 700; color: var(--brand); background: var(--surface); border: 1.5px solid var(--line); border-radius: 9px; padding: 4px 10px; }
+        .gcell input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--ring); }
+        .lightbox-body { background: var(--surface-2); border-radius: 14px; padding: 10px; display: grid; place-items: center; max-height: 74vh; overflow: auto; }
+        .lightbox-body img { max-width: 100%; height: auto; border-radius: 8px; }
+
+        /* ================= FOOTER / DOCK / TOAST ================= */
+        .footer { border-top: 1px solid var(--line); padding: 18px 0 22px; color: var(--muted); font-size: 13px; }
+        .footer-in { display: flex; flex-direction: column; gap: 4px; }
+        @media (min-width: 720px) { .footer-in { flex-direction: row; justify-content: space-between; gap: 24px; } }
+        .footer b { color: var(--ink-2); font-weight: 700; }
+
+        .dock {
+            position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+            background: color-mix(in srgb, var(--surface) 92%, transparent); border-top: 1px solid var(--line);
+            -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+            transform: translateY(105%); visibility: hidden; transition: transform .28s cubic-bezier(.2,.8,.2,1), visibility 0s linear .28s;
+        }
+        .dock.show { transform: none; visibility: visible; transition-delay: 0s; }
+        .dock-score { display: flex; flex-direction: column; line-height: 1.15; }
+        .dock-score span { font-size: 12.5px; color: var(--muted); }
+        .dock-score b { font-family: var(--serif); font-size: 28px; font-weight: 700; letter-spacing: -.02em; font-feature-settings: "lnum", "tnum"; }
+        @media (min-width: 1024px) { .dock { display: none; } }
+
+        .toast { position: fixed; z-index: 80; left: 16px; right: 16px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); display: flex; justify-content: center; pointer-events: none; opacity: 0; transform: translateY(16px); transition: opacity .22s, transform .22s; }
+        body.has-dock .toast { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+        .toast.show { opacity: 1; transform: none; pointer-events: auto; }
+        .toast-in { display: flex; align-items: center; gap: 12px; max-width: 480px; background: var(--ink); color: var(--surface); padding: 11px 14px; border-radius: 13px; font-size: 14px; line-height: 1.45; box-shadow: 0 14px 34px -10px rgba(0,0,0,.45); }
+        .toast-dot { width: 8px; height: 8px; border-radius: 50%; background: #3DD9A8; flex: none; }
+        .toast-action { border: 0; background: rgba(255,255,255,.14); color: inherit; font-weight: 700; font-size: 13px; padding: 5px 12px; border-radius: 8px; white-space: nowrap; }
+        .toast-action:hover { background: rgba(255,255,255,.24); }
+        @media (prefers-color-scheme: dark) { .toast-action { background: rgba(0,0,0,.12); } .toast-action:hover { background: rgba(0,0,0,.2); } }
+        @media (min-width: 640px) { .toast { left: auto; right: 24px; justify-content: flex-end; } body.has-dock .toast { bottom: calc(18px + env(safe-area-inset-bottom, 0px)); } }
+        @media (min-width: 1024px) { body.has-dock .toast { bottom: calc(18px + env(safe-area-inset-bottom, 0px)); } }
+
+        @media (prefers-reduced-motion: reduce) {
+            html { scroll-behavior: auto; }
+            *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+        }
+
+        .official { display: grid; gap: 8px; padding: 14px; border: 1px dashed var(--line); border-radius: 14px; background: var(--surface-2); }
+        .official-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+        .official-row label { font-size: 13.5px; font-weight: 600; color: var(--ink-2); }
+        .input.input-sm { width: 120px; min-height: 38px; font-size: 14px; text-align: right; font-weight: 700; }
+        .official-result { font-size: 13.5px; color: var(--muted); line-height: 1.55; }
+        .official-result:empty { display: none; }
+        .official-result .ok { color: var(--brand); font-weight: 600; }
+        .official-result .warn { color: var(--gold); font-weight: 600; }
+        .suggest-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+        .suggest-list .btn { height: auto; min-height: 36px; padding: 8px 12px; white-space: normal; text-align: left; justify-content: flex-start; line-height: 1.4; }
+        .tip { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: var(--brand-soft); color: var(--ink-2); font-size: 13.5px; line-height: 1.55; }
+        .tip svg { margin-top: 2px; color: var(--brand); }
+        .tip a { color: var(--brand); font-weight: 700; }
+        .notice-warn .btn { flex: none; }
+        .themes { display: flex; gap: 8px; flex-wrap: wrap; }
+        .theme-opt { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px 0 8px; border: 1.5px solid var(--line); border-radius: 11px; background: var(--surface-2); font-weight: 600; font-size: 14px; }
+        .theme-opt i { width: 24px; height: 24px; border-radius: 7px; border: 2px solid; }
+        .theme-opt.active { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans antialiased min-h-screen flex flex-col">
+<body>
+    <a class="skip" href="#table-section">সরাসরি কোর্স তালিকায় যান</a>
 
-    <!-- ================= TOP HEADER ================= -->
-    <header class="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-30 shadow-md">
-        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-0 sm:h-16 flex items-center justify-between gap-3">
-            <div class="flex items-center gap-2.5 min-w-0">
-                <div class="min-w-0">
-                    <h1 class="text-lg sm:text-2xl font-extrabold tracking-tight flex items-center gap-2.5 truncate text-white">
-                        <span class="truncate">CGPA / GPA Calculator</span>
-                        <span id="header-scale-badge" class="hidden sm:inline-block text-[11px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full shrink-0">UGC 4.00 Scale</span>
-                    </h1>
+    <!-- ================= APP BAR ================= -->
+    <header class="appbar">
+        <div class="wrap appbar-in">
+            <div class="brand">
+                <span class="mark" aria-hidden="true">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5L2 9z"/><path d="M6 11.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-4.5"/><path d="M22 9v5"/></svg>
+                </span>
+                <div>
+                    <h1>CGPA / GPA Calculator</h1>
+                    <p class="brand-sub">রেজাল্ট শিটের ছবি থেকে স্বয়ংক্রিয় হিসাব</p>
                 </div>
+                <span id="header-scale-badge" class="chip">UGC 4.00 Scale</span>
             </div>
-
-            <div class="flex items-center gap-2 shrink-0">
-                <button id="ai-settings-btn" type="button" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs sm:text-sm font-semibold px-3 py-2 rounded-xl transition cursor-pointer">
-                    🤖 AI ইঞ্জিন
+            <div class="appbar-actions">
+                <button id="ai-settings-btn" type="button" class="btn btn-ghost" aria-label="AI ইঞ্জিন সেটিংস">
+                    <svg class="i" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="3"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>
+                    <span class="btn-label">AI ইঞ্জিন</span>
                 </button>
-                <button id="grade-scale-btn" type="button" class="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs sm:text-sm font-bold px-4 py-2 rounded-xl shadow-md shadow-indigo-500/25 transition cursor-pointer">
-                    গ্রেড স্কেল এডিট
+                <button id="grade-scale-btn" type="button" class="btn btn-primary" aria-label="গ্রেড স্কেল এডিট করুন">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
+                    <span class="btn-label">গ্রেড স্কেল</span>
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- ================= MAIN CONTAINER ================= -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 space-y-5">
+    <!-- ================= MAIN ================= -->
+    <main class="wrap main">
 
-        <!-- SYSTEM SWITCHER BAR: UNIVERSITY (4.00) vs SCHOOL/COLLEGE SSC/HSC (5.00) -->
-        <div class="bg-white rounded-2xl border border-slate-200 p-3 shadow-sm flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-2">
-                <span class="text-xs font-bold text-slate-700">🎓 শিক্ষা স্তর / স্কেল:</span>
-                <div class="bg-slate-100 p-1 rounded-xl border border-slate-200 flex gap-1">
-                    <button type="button" data-edu-system="university" class="edu-sys-btn active px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-xs transition cursor-pointer">
-                        বিশ্ববিদ্যালয় (CGPA • 4.00)
-                    </button>
-                    <button type="button" data-edu-system="school" class="edu-sys-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition cursor-pointer">
-                        স্কুল / কলেজ SSC/HSC (GPA • 5.00)
-                    </button>
-                </div>
+        <!-- Level switcher -->
+        <section class="levelbar" aria-label="শিক্ষা স্তর">
+            <div class="seg" role="group" aria-label="শিক্ষা স্তর ও স্কেল">
+                <button type="button" data-edu-system="university" class="edu-sys-btn active" aria-pressed="true">
+                    বিশ্ববিদ্যালয়
+                    <small>CGPA, ৪.০০ স্কেল</small>
+                </button>
+                <button type="button" data-edu-system="school" class="edu-sys-btn" aria-pressed="false">
+                    স্কুল / কলেজ
+                    <small>SSC/HSC GPA, ৫.০০ স্কেল</small>
+                </button>
             </div>
-            <div class="flex items-center gap-2 text-xs text-slate-500">
-                <span id="edu-system-hint">ক্রেডিট-ভিত্তিক ওয়েটেড CGPA হিসাব চালু আছে</span>
-            </div>
-        </div>
+            <span id="edu-system-hint">ক্রেডিট-ভিত্তিক ওয়েটেড CGPA হিসাব চালু আছে</span>
+        </section>
 
-        <!-- TOP UPLOAD + COMPACT LIVE CGPA DASHBOARD GRID -->
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+        <div class="dash">
 
-            <!-- Left: Compact Image Upload & Queue (5 Cols) -->
-            <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between space-y-3">
-                <div class="space-y-2.5">
-                    <div class="flex items-center justify-between">
-                        <h2 class="text-sm font-bold text-slate-900">রেজাল্ট শিট / মার্কশিটের ছবি দিন</h2>
-                        <span class="text-[11px] font-semibold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-100">Ctrl+V পেস্ট</span>
-                    </div>
-
-                    <!-- Dropzone -->
-                    <label id="result-dropzone" for="result-file-input" class="border-2 border-dashed border-indigo-300 hover:border-indigo-600 bg-indigo-50/30 hover:bg-indigo-50/70 rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[130px]">
-                        <input id="result-file-input" type="file" accept="image/*" multiple class="hidden">
-                        <div class="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center mb-1.5 shadow-sm">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-                        </div>
-                        <p class="text-xs sm:text-sm font-bold text-slate-800">ছবি সিলেক্ট করুন বা এখানে ড্র্যাগ করুন</p>
-                        <p class="text-[11px] text-slate-500 mt-0.5">এক বা একাধিক সেমিস্টার/মার্কশিট • অথবা <strong class="text-indigo-600">Ctrl+V</strong></p>
-                    </label>
-
-                    <!-- Processing Progress Bar -->
-                    <div id="ocr-progress-wrap" class="hidden bg-indigo-50 border border-indigo-200 rounded-xl p-2.5 space-y-1">
-                        <div class="flex items-center justify-between text-xs font-bold text-indigo-950">
-                            <span id="ocr-progress-label" class="flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-indigo-600 animate-ping"></span>
-                                AI টেবিল বিশ্লেষণ করছে...
-                            </span>
-                            <span id="ocr-progress-pct" class="font-mono text-indigo-700">0%</span>
-                        </div>
-                        <div class="w-full bg-indigo-200/70 rounded-full h-1.5 overflow-hidden">
-                            <div id="ocr-progress-bar" class="bg-indigo-600 h-1.5 transition-all duration-200" style="width: 0%"></div>
-                        </div>
-                    </div>
-
-                    <!-- Uploaded Image Thumbnails Strip -->
-                    <div id="uploaded-thumbs-wrap" class="hidden space-y-1">
-                        <span class="text-[11px] font-bold text-slate-500 block">আপলোডকৃত শিটসমূহ:</span>
-                        <div id="uploaded-thumbs-list" class="flex flex-wrap gap-1.5"></div>
-                    </div>
+            <!-- Upload -->
+            <section class="panel upload" aria-labelledby="upload-h">
+                <div class="panel-h">
+                    <h2 id="upload-h">রেজাল্ট শিটের ছবি দিন</h2>
+                    <span class="kbd-hint">স্ক্রিনশট পেস্ট: <kbd>Ctrl</kbd> + <kbd>V</kbd></span>
                 </div>
 
-                <!-- Sample Demo Loader & Clear Button -->
-                <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
-                    <button id="load-sample-btn" type="button" class="text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-xl border border-indigo-200 transition cursor-pointer">
-                        ✨ নমুনা রেজাল্ট টেস্ট
+                <label id="result-dropzone" for="result-file-input" class="drop">
+                    <input id="result-file-input" type="file" accept="image/*" multiple class="sr-only">
+                    <span class="drop-ico" aria-hidden="true">
+                        <svg class="i" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 4v12M8 8l4-4 4 4"/></svg>
+                    </span>
+                    <strong>ছবি বেছে নিন বা এখানে ছেড়ে দিন</strong>
+                    <span class="sub">একাধিক সেমিস্টারের ছবি একসাথে দেওয়া যায়। টেবিল পরিষ্কার দেখা গেলে ফল ভালো আসে।</span>
+                </label>
+
+                <div id="ocr-progress-wrap" class="hidden progress" aria-live="polite">
+                    <div class="progress-top">
+                        <span id="ocr-progress-label"><span class="spinner"></span> ছবি বিশ্লেষণ করা হচ্ছে...</span>
+                        <span id="ocr-progress-pct">0%</span>
+                    </div>
+                    <div class="progress-track"><div id="ocr-progress-bar" style="width: 0%"></div></div>
+                </div>
+
+                <div id="uploaded-thumbs-wrap" class="hidden">
+                    <span class="thumbs-label">আপলোড করা ছবি</span>
+                    <div id="uploaded-thumbs-list"></div>
+                </div>
+
+                <div class="upload-foot">
+                    <button id="load-sample-btn" type="button" class="btn btn-soft btn-sm">
+                        <svg class="i" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM9 9h6M9 13h6M9 17h3"/></svg>
+                        নমুনা দিয়ে দেখুন
                     </button>
-                    <button id="clear-all-btn" type="button" class="text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 px-2.5 py-1.5 rounded-xl border border-rose-200 transition cursor-pointer">
+                    <button id="clear-all-btn" type="button" class="btn btn-danger btn-sm">
+                        <svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V4h6v3"/></svg>
                         সব মুছুন
                     </button>
                 </div>
-            </div>
+            </section>
 
-            <!-- Right: Compact Live CGPA Scoreboard & Filter Controls (7 Cols) -->
-            <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm flex flex-col justify-between space-y-3.5">
-                
-                <!-- Filter Mode Switcher (University Modes vs School Optional Rule) -->
-                <div id="uni-mode-bar" class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                    <span class="text-xs font-bold text-slate-700">হিসাবের ধরন:</span>
-                    <div class="bg-slate-100 p-1 rounded-xl border border-slate-200 flex flex-wrap gap-1">
-                        <button type="button" data-calc-mode="all" class="calc-mode-btn active px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-xs transition cursor-pointer">
-                            সব কোর্স (All)
-                        </button>
-                        <button type="button" data-calc-mode="theoretical" class="calc-mode-btn px-2.5 py-1 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition cursor-pointer">
-                            শুধু Theoretical
-                        </button>
-                        <button type="button" data-calc-mode="sessional" class="calc-mode-btn px-2.5 py-1 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition cursor-pointer">
-                            শুধু Sessional
-                        </button>
+            <!-- Result -->
+            <section class="panel result" aria-labelledby="result-h">
+                <h2 id="result-h" class="sr-only">ফলাফল</h2>
+
+                <div id="uni-mode-bar" class="modebar">
+                    <span class="lbl">কোন কোর্স ধরে হিসাব হবে</span>
+                    <div class="seg seg-sm" role="group" aria-label="হিসাবের ধরন">
+                        <button type="button" data-calc-mode="all" class="calc-mode-btn active" aria-pressed="true">সব কোর্স</button>
+                        <button type="button" data-calc-mode="theoretical" class="calc-mode-btn" aria-pressed="false">শুধু Theoretical</button>
+                        <button type="button" data-calc-mode="sessional" class="calc-mode-btn" aria-pressed="false">শুধু Sessional</button>
                     </div>
                 </div>
 
-                <!-- School/College Mode Info Bar (Shown when School/College 5.00 Scale is active) -->
-                <div id="school-mode-bar" class="hidden flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3 bg-emerald-50/60 px-3 py-2 rounded-xl border border-emerald-200/70">
-                    <div class="text-xs text-emerald-950 font-semibold">
-                        🏫 বোর্ড নিয়ম: আবশ্যিক বিষয়ের গড় + <strong>৪র্থ বিষয় (4th Subject)</strong>-এর <code>(GP - 2.00)</code> বোনাস যোগ হবে (সর্বোচ্চ ৫.০০)।
-                    </div>
-                    <label class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 cursor-pointer">
-                        <input id="school-fail-lock-chk" type="checkbox" checked class="w-3.5 h-3.5 accent-emerald-600 rounded">
-                        <span>আবশ্যিক বিষয়ে F থাকলে GPA 0.00</span>
+                <div id="school-mode-bar" class="hidden notice notice-ok">
+                    <span>বোর্ড নিয়ম: আবশ্যিক বিষয়ের গড়ের সাথে <strong>৪র্থ বিষয়ের</strong> <code>(GP − 2.00)</code> বোনাস যোগ হয়, সর্বোচ্চ ৫.০০।</span>
+                    <label class="switch">
+                        <input id="school-fail-lock-chk" type="checkbox" checked>
+                        <span>আবশ্যিক বিষয়ে F থাকলে GPA 0.00</span>
                     </label>
                 </div>
 
-                <!-- Compact Hero CGPA + Stats Strip -->
-                <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-stretch">
-                    <div class="sm:col-span-5 bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 text-white rounded-2xl p-4 flex flex-col items-center justify-center text-center shadow-lg shadow-indigo-500/25 min-h-[116px]">
-                        <span id="cgpa-mode-badge" class="text-[10px] font-semibold bg-white/15 px-2.5 py-0.5 rounded-full mb-1">সব কোর্স (All)</span>
-                        <div class="text-5xl sm:text-6xl font-mono font-black tracking-tight text-white drop-shadow-sm" id="hero-cgpa-value">0.00</div>
-                        <span id="hero-scale-caption" class="text-[11px] text-indigo-100 mt-1">অর্জিত CGPA (৪.০০ স্কেলে)</span>
+                <div class="score">
+                    <div id="hero-card" class="hero" data-tier="">
+                        <span id="cgpa-mode-badge" class="hero-badge">সব কোর্স (All)</span>
+                        <div id="hero-cgpa-value">0.00</div>
+                        <span id="hero-scale-caption">অর্জিত CGPA (৪.০০ স্কেলে)</span>
+                        <div class="meter" aria-hidden="true"><i id="hero-meter-fill"></i></div>
+                        <div class="meter-scale" aria-hidden="true"><span>0</span><span id="hero-meter-max">4.00</span></div>
                     </div>
 
-                    <!-- 4 Compact Breakdown Cards -->
-                    <div class="sm:col-span-7 grid grid-cols-2 gap-2.5">
-                        <div class="bg-slate-50 border border-slate-200/90 rounded-xl p-2.5">
-                            <span id="stat-box1-title" class="text-[11px] text-slate-500 block">হিসাবকৃত মোট ক্রেডিট</span>
-                            <strong id="stat-total-credits" class="text-base font-mono font-bold text-slate-900 block">0.00</strong>
-                            <span id="stat-subject-count" class="text-[10px] text-indigo-600 font-medium">০টি সাবজেক্ট</span>
+                    <div class="stats">
+                        <div class="stat">
+                            <span id="stat-box1-title" class="stat-l">হিসাবকৃত মোট ক্রেডিট</span>
+                            <strong id="stat-total-credits" class="stat-v">0.00</strong>
+                            <span id="stat-subject-count" class="stat-s">০টি সাবজেক্ট</span>
                         </div>
-                        <div class="bg-slate-50 border border-slate-200/90 rounded-xl p-2.5">
-                            <span id="stat-box2-title" class="text-[11px] text-slate-500 block">মোট গ্রেড পয়েন্ট</span>
-                            <strong id="stat-total-points" class="text-base font-mono font-bold text-emerald-700 block">0.00</strong>
-                            <span id="stat-box2-sub" class="text-[10px] text-slate-400">মোট পয়েন্ট যোগফল</span>
+                        <div class="stat">
+                            <span id="stat-box2-title" class="stat-l">মোট গ্রেড পয়েন্ট</span>
+                            <strong id="stat-total-points" class="stat-v">0.00</strong>
+                            <span id="stat-box2-sub" class="stat-s">মোট পয়েন্ট যোগফল</span>
                         </div>
-                        <div id="stat-box3-wrap" class="bg-indigo-50/60 border border-indigo-100 rounded-xl p-2.5">
-                            <span id="stat-box3-title" class="text-[11px] text-indigo-800 block">শুধু Theoretical GPA</span>
-                            <strong id="stat-theory-gpa" class="text-sm font-mono font-bold text-indigo-950 block">0.00</strong>
-                            <span id="stat-theory-credits" class="text-[10px] text-indigo-600">0.00 ক্রেডিট</span>
+                        <div id="stat-box3-wrap" class="stat a">
+                            <span id="stat-box3-title" class="stat-l">শুধু Theoretical GPA</span>
+                            <strong id="stat-theory-gpa" class="stat-v">0.00</strong>
+                            <span id="stat-theory-credits" class="stat-s">0.00 ক্রেডিট</span>
                         </div>
-                        <div id="stat-box4-wrap" class="bg-emerald-50/60 border border-emerald-100 rounded-xl p-2.5">
-                            <span id="stat-box4-title" class="text-[11px] text-emerald-800 block">শুধু Sessional GPA</span>
-                            <strong id="stat-sessional-gpa" class="text-sm font-mono font-bold text-emerald-950 block">0.00</strong>
-                            <span id="stat-sessional-credits" class="text-[10px] text-emerald-600">0.00 ক্রেডিট</span>
+                        <div id="stat-box4-wrap" class="stat b">
+                            <span id="stat-box4-title" class="stat-l">শুধু Sessional GPA</span>
+                            <strong id="stat-sessional-gpa" class="stat-v">0.00</strong>
+                            <span id="stat-sessional-credits" class="stat-s">0.00 ক্রেডিট</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Optional Options & Export Actions (Including High-Res PNG Scorecard Download) -->
-                <div class="pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
-                    <label id="exclude-f-wrap" class="inline-flex items-center gap-2 cursor-pointer select-none text-xs font-semibold text-slate-700 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200">
-                        <input id="exclude-f-chk" type="checkbox" class="w-3.5 h-3.5 accent-indigo-600 rounded cursor-pointer">
+                <div id="official-check" class="hidden official">
+                    <div class="official-row">
+                        <label for="official-gpa-input">মার্কশিটে লেখা CGPA (মিলিয়ে দেখতে)</label>
+                        <input id="official-gpa-input" class="input input-sm" type="number" inputmode="decimal" step="0.01" min="0" max="5" placeholder="যেমন 3.71">
+                    </div>
+                    <div id="official-result" class="official-result" aria-live="polite"></div>
+                </div>
+
+                <div class="result-foot">
+                    <label id="exclude-f-wrap" class="switch">
+                        <input id="exclude-f-chk" type="checkbox">
                         <span>F (0.00) গ্রেড বাদ দিন</span>
                     </label>
-
-                    <div class="flex flex-wrap items-center gap-1.5 ml-auto">
-                        <button id="download-png-btn" type="button" class="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white text-xs font-bold px-3.5 py-1.5 rounded-xl shadow-sm shadow-orange-500/20 cursor-pointer transition">
+                    <div class="result-actions">
+                        <button id="download-png-btn" type="button" class="btn btn-primary">
+                            <svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M8 11l4 4 4-4M5 19h14"/></svg>
                             কার্ড ডাউনলোড
                         </button>
-                        <button id="copy-summary-btn" type="button" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs cursor-pointer">
+                        <button id="copy-summary-btn" type="button" class="btn btn-ghost">
+                            <svg class="i" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/></svg>
                             কপি
                         </button>
-                        <button id="export-csv-btn" type="button" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs cursor-pointer">
+                        <button id="export-csv-btn" type="button" class="btn btn-ghost">
+                            <svg class="i" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8l-5-5zM14 3v5h5M9 13h6M9 17h6"/></svg>
                             CSV
                         </button>
                     </div>
                 </div>
-            </div>
+            </section>
         </div>
 
-        <!-- ================= EXTRACTED & EDITABLE COURSES TABLE ================= -->
-        <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 bg-slate-50/70">
+        <!-- Courses table -->
+        <section id="table-section" class="panel table-panel" aria-labelledby="table-h">
+            <div class="table-head">
                 <div>
-                    <h3 class="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
-                        <span>শনাক্তকৃত কোর্স ও গ্রেড তালিকা (Editable Table)</span>
-                        <span id="table-row-badge" class="text-xs font-mono bg-slate-900 text-white px-2.5 py-0.5 rounded-full">0</span>
-                    </h3>
-                    <p class="text-xs text-slate-500">যেকোনো ক্রেডিট, গ্রেড বা পয়েন্ট ভুল মনে হলে সরাসরি এখান থেকে পরিবর্তন করতে পারবেন</p>
+                    <h2 id="table-h"><span>কোর্স ও গ্রেড তালিকা</span> <span id="table-row-badge">0</span></h2>
+                    <p>যেকোনো ঘর সরাসরি বদলানো যায়, হিসাব সঙ্গে সঙ্গে আপডেট হয়।</p>
                 </div>
+                <button id="header-add-row-btn" type="button" class="btn btn-soft btn-sm">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                    সাবজেক্ট যোগ করুন
+                </button>
             </div>
 
-            <!-- OCR Verification Reminder Banner (Shown after image scan) -->
-            <div id="ocr-verify-banner" class="hidden bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center justify-between gap-2 text-xs text-amber-950">
-                <div class="flex items-center gap-2 font-semibold">
-                    <span class="inline-block w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>
-                    <span>⚠️ ছবি থেকে তথ্য নেওয়ার সময় ছোটখাটো মিস্টেক হতে পারে—অনুগ্রহ করে নিচের টেবিলে আপনার <strong>ক্রেডিট</strong> ও <strong>গ্রেড (LG)</strong> ঠিক আছে কি না একবার চেক করে নিন।</span>
-                </div>
-                <button id="dismiss-verify-banner" type="button" class="text-amber-800 hover:text-amber-950 font-bold px-2 py-0.5 rounded cursor-pointer shrink-0">✕</button>
+            <div id="ocr-verify-banner" class="hidden notice notice-warn" role="alert">
+                <svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9L2.4 18a2 2 0 001.7 3h15.8a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>
+                <p>ছবি থেকে পড়ার সময় ছোটখাটো ভুল হতে পারে। নিচের টেবিলে <strong>ক্রেডিট</strong> ও <strong>গ্রেড</strong> একবার মিলিয়ে নিন। হলুদ চিহ্নিত ঘরগুলো আগে দেখুন।</p>
+                <button id="verify-open-image" type="button" class="btn btn-ghost btn-sm hidden">ছবির সাথে মেলান</button>
+                <button id="dismiss-verify-banner" type="button" class="icon-btn" aria-label="বার্তাটি বন্ধ করুন">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                </button>
             </div>
 
-            <div class="overflow-x-auto max-h-[540px] overflow-y-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead class="sticky top-0 z-10 shadow-xs">
-                        <tr id="courses-table-head-row" class="bg-slate-900 text-white text-[11px] sm:text-xs uppercase tracking-wider">
-                            <th class="py-3 px-3 sm:px-4 font-semibold w-12 bg-slate-900">#</th>
-                            <th class="py-3 px-3 sm:px-4 font-semibold bg-slate-900">Course Code <span class="text-[10px] font-normal text-slate-400 normal-case">(Optional)</span></th>
-                            <th class="py-3 px-3 sm:px-4 font-semibold bg-slate-900">Course Name <span class="text-[10px] font-normal text-slate-400 normal-case">(Optional)</span></th>
-                            <th class="py-3 px-3 sm:px-4 font-semibold w-32 bg-slate-900 text-amber-300" id="th-col-credit">Credit</th>
-                            <th class="py-3 px-3 sm:px-4 font-semibold w-36 bg-slate-900" id="th-col-type">Type</th>
-                            <th class="py-3 px-3 sm:px-4 font-semibold w-28 bg-slate-900" id="th-col-status">Status</th>
-                            <th class="py-3 px-3 sm:px-4 font-semibold w-32 bg-slate-900 text-amber-300">Grade (LG)</th>
-                            <th class="py-3 px-3 sm:px-4 font-semibold w-24 bg-slate-900">GP</th>
-                            <th class="py-3 px-3 sm:px-4 font-semibold w-28 bg-slate-900" id="th-col-points">Points</th>
-                            <th class="py-3 px-3 sm:px-4 font-semibold text-right w-16 bg-slate-900">মুছুন</th>
+            <div id="dup-notice" class="hidden notice notice-warn" role="alert">
+                <svg class="i" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/></svg>
+                <p id="dup-text"></p>
+                <button id="dup-remove-btn" type="button" class="btn btn-ghost btn-sm">ডুপ্লিকেট সরান</button>
+            </div>
+
+            <div class="tablewrap">
+                <table class="grid">
+                    <thead>
+                        <tr id="courses-table-head-row">
+                            <th class="col-idx" style="width:52px">#</th>
+                            <th>Course Code</th>
+                            <th>Course Name</th>
+                            <th class="col-credit" id="th-col-credit">Credit</th>
+                            <th id="th-col-type">Type</th>
+                            <th id="th-col-status">Status</th>
+                            <th class="col-grade">Grade (LG)</th>
+                            <th>GP</th>
+                            <th id="th-col-points">Points</th>
+                            <th style="width:52px"><span class="sr-only">মুছুন</span></th>
                         </tr>
                     </thead>
-                    <tbody id="courses-table-body" class="divide-y divide-slate-200 text-xs sm:text-sm">
-                        <tr>
-                            <td colspan="10" class="py-10 text-center space-y-3">
-                                <p class="text-slate-400 text-xs">এখনো কোনো রেজাল্ট শিটের ছবি দেওয়া হয়নি। উপরে রেজাল্ট শিটের ছবি আপলোড করুন অথবা নিচের বাটনে ক্লিক করে সাবজেক্ট যোগ করুন।</p>
-                                <button id="add-manual-row-btn" type="button" class="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-indigo-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition cursor-pointer">
-                                    <span>+ নতুন সাবজেক্ট যোগ করুন</span>
-                                </button>
+                    <tbody id="courses-table-body">
+                        <tr class="empty-row">
+                            <td colspan="10">
+                                <div class="empty">
+                                    <svg class="art" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="12" y="6" width="40" height="52" rx="6"/><path d="M22 20h20M22 29h20M22 38h12"/></svg>
+                                    <h3>এখনো কোনো কোর্স নেই</h3>
+                                    <p>রেজাল্ট শিটের ছবি আপলোড করুন, অথবা নিজে সাবজেক্ট যোগ করুন।</p>
+                                    <div class="empty-actions">
+                                        <button id="add-manual-row-btn" type="button" class="btn btn-primary dynamic-add-row-btn">সাবজেক্ট যোগ করুন</button>
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                     </tbody>
-                    <!-- Sticky Total Footer Row -->
-                    <tfoot id="courses-table-foot" class="sticky bottom-0 z-10 bg-slate-900 text-white font-mono text-xs sm:text-sm font-bold shadow-inner">
-                        <tr class="border-t-2 border-slate-700">
-                            <td colspan="3" class="py-3 px-4 text-right uppercase tracking-wider text-slate-300" id="footer-label-left">মোট (Total):</td>
-                            <td id="footer-total-credits" class="py-3 px-4 text-indigo-300">0.00</td>
-                            <td colspan="4" class="py-3 px-4 text-right uppercase tracking-wider text-slate-300" id="footer-label-right">মোট পয়েন্ট (Points):</td>
-                            <td id="footer-total-points" class="py-3 px-4 text-emerald-400">0.00</td>
+                    <tfoot id="courses-table-foot">
+                        <tr>
+                            <td colspan="3" class="lbl" id="footer-label-left">মোট (Total):</td>
+                            <td id="footer-total-credits">0.00</td>
+                            <td colspan="4" class="lbl" id="footer-label-right">মোট পয়েন্ট (Points):</td>
+                            <td id="footer-total-points">0.00</td>
                             <td></td>
                         </tr>
                     </tfoot>
                 </table>
             </div>
         </section>
-
     </main>
 
-    <!-- Hybrid AI Engine Settings Modal (Gemini + ChatGPT + Claude) -->
-    <div id="ai-settings-modal" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-slate-200 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+    <!-- ================= AI ENGINE MODAL ================= -->
+    <div id="ai-settings-modal" class="hidden modal" role="dialog" aria-modal="true" aria-labelledby="ai-modal-title">
+        <div class="sheet" tabindex="-1">
+            <div class="sheet-h">
                 <div>
-                    <h3 class="text-base font-bold text-slate-900">🤖 Multi-Model Hybrid AI Vision ইঞ্জিন</h3>
-                    <p class="text-[11px] text-slate-500">OCR.Space (ফ্রি বিল্ট-ইন), Gemini, Groq, OpenRouter, ChatGPT বা Claude যুক্ত করুন</p>
+                    <h3 id="ai-modal-title">AI ইঞ্জিন সেটিংস</h3>
+                    <p>ছবি পড়ার জন্য কোন সার্ভিস ব্যবহার হবে তা বেছে নিন। কী ছাড়াই ফ্রি OCR চলবে।</p>
                 </div>
-                <button id="close-ai-modal" type="button" class="text-xs font-bold bg-slate-100 hover:bg-rose-100 hover:text-rose-700 text-slate-700 px-2.5 py-1 rounded-lg cursor-pointer">✕</button>
+                <button id="close-ai-modal" type="button" class="icon-btn" aria-label="বন্ধ করুন">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                </button>
             </div>
 
-            <div class="space-y-3 text-xs">
+            <p class="tip">
+                <svg class="i" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 00-4 10.5c.7.7 1 1.4 1 2.5h6c0-1.1.3-1.8 1-2.5A6 6 0 0012 3z"/></svg>
+                <span>সবচেয়ে নির্ভুল ফল পেতে ফ্রি <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Gemini কী</a> যোগ করুন। কী ছাড়া চললে B+ / B- এর মতো ছোট চিহ্ন মাঝে মাঝে বাদ পড়তে পারে, সন্দেহজনক ঘর হলুদ দেখাবে।</span>
+            </p>
+
+            <div class="field">
+                <label for="ai-provider-select">প্রাথমিক ইঞ্জিন</label>
+                <select id="ai-provider-select" class="select">
+                    <option value="auto">স্মার্ট অটো (Gemini → Groq → OpenRouter → OCR.Space → Local)</option>
+                    <option value="ocrspace">OCR.Space ফ্রি টেবিল ইঞ্জিন (কী লাগবে না)</option>
+                    <option value="groq">Groq Llama Vision (ফ্রি টিয়ার)</option>
+                    <option value="openrouter">OpenRouter Free Vision (Qwen2.5-VL / Gemma)</option>
+                    <option value="gemini">Google Gemini Vision (gemini-2.5-flash)</option>
+                    <option value="openai">OpenAI ChatGPT Vision (gpt-4o)</option>
+                    <option value="claude">Anthropic Claude Vision (claude-sonnet-5-5)</option>
+                    <option value="local">শুধু অফলাইন টেবিল OCR (২.৫x আপস্কেল)</option>
+                </select>
+            </div>
+
+            <div class="keys">
+                <div class="field">
+                    <label for="key-ocrspace">OCR.Space কী</label>
+                    <input id="key-ocrspace" type="text" value="helloworld" placeholder="helloworld বা আপনার ফ্রি কী" class="input" autocomplete="off" spellcheck="false">
+                    <span class="help">ডিফল্ট ফ্রি কী দেওয়া আছে।</span>
+                </div>
+                <div class="field">
+                    <label for="key-groq">Groq কী</label>
+                    <input id="key-groq" type="password" placeholder="gsk_..." class="input" autocomplete="off" spellcheck="false">
+                    <span class="help">console.groq.com থেকে ফ্রি কী নেওয়া যায়।</span>
+                </div>
+                <div class="field">
+                    <label for="key-openrouter">OpenRouter কী</label>
+                    <input id="key-openrouter" type="password" placeholder="sk-or-v1-..." class="input" autocomplete="off" spellcheck="false">
+                    <span class="help">openrouter.ai এর ফ্রি মডেলের জন্য।</span>
+                </div>
+                <div class="field">
+                    <label for="key-gemini">Google Gemini কী (ঐচ্ছিক)</label>
+                    <input id="key-gemini" type="password" placeholder="AIzaSy..." class="input" autocomplete="off" spellcheck="false">
+                </div>
+                <div class="field">
+                    <label for="key-openai">OpenAI কী (ঐচ্ছিক)</label>
+                    <input id="key-openai" type="password" placeholder="sk-proj-..." class="input" autocomplete="off" spellcheck="false">
+                </div>
+                <div class="field">
+                    <label for="key-claude">Anthropic Claude কী (ঐচ্ছিক)</label>
+                    <input id="key-claude" type="password" placeholder="sk-ant-..." class="input" autocomplete="off" spellcheck="false">
+                </div>
+            </div>
+
+            <p class="privacy">
+                <svg class="i" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 4.5-3.2 8-8 9-4.8-1-8-4.5-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg>
+                <span>কী গুলো শুধু এই ডিভাইসের ব্রাউজারে সেভ থাকে। ছবি বিশ্লেষণের সময় ছবিটি আপনার বেছে নেওয়া সার্ভিসে পাঠানো হয়। অফলাইন ইঞ্জিন বেছে নিলে ছবি ডিভাইসেই থাকে।</span>
+            </p>
+
+            <div class="sheet-foot">
+                <button id="save-ai-settings-btn" type="button" class="btn btn-primary">সেটিংস সেভ করুন</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= GRADE SCALE MODAL ================= -->
+    <div id="grade-scale-modal" class="hidden modal" role="dialog" aria-modal="true" aria-labelledby="scale-modal-title">
+        <div class="sheet" tabindex="-1">
+            <div class="sheet-h">
                 <div>
-                    <label class="font-bold text-slate-800 block mb-1">প্রাথমিক AI ইঞ্জিন নির্বাচন করুন:</label>
-                    <select id="ai-provider-select" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-semibold text-slate-800 focus:outline-none focus:border-indigo-500">
-                        <option value="auto">🔄 স্মার্ট হাইব্রিড অটো (Gemini → Groq → OpenRouter Free → OCR.Space → Local)</option>
-                        <option value="ocrspace">🆓 OCR.Space Free Table Engine (কোনো API Key ছাড়াই চলবে)</option>
-                        <option value="groq">⚡ Groq Open-Source Llama Vision (ফ্রি টিয়ার)</option>
-                        <option value="openrouter">🌐 OpenRouter Free Vision (Qwen2.5-VL / Gemma Vision)</option>
-                        <option value="gemini">✨ Google Gemini Vision (gemini-2.5-flash)</option>
-                        <option value="openai">🧠 OpenAI ChatGPT Vision (gpt-4o)</option>
-                        <option value="claude">🎭 Anthropic Claude Vision (claude-3-5-sonnet)</option>
-                        <option value="local">💻 শুধুমাত্র অফলাইন 2.5x Upscaled Table OCR ইঞ্জিন</option>
-                    </select>
+                    <h3 id="scale-modal-title">গ্রেড পয়েন্ট স্কেল</h3>
+                    <p>নিজের বিশ্ববিদ্যালয় বা বোর্ড অনুযায়ী যেকোনো গ্রেডের পয়েন্ট বদলাতে পারবেন।</p>
                 </div>
-
-                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2.5 max-h-[300px] overflow-y-auto">
-                    <div>
-                        <label class="font-semibold text-slate-700 block mb-0.5">OCR.Space Free API Key (বিল্ট-ইন ফ্রি কী দেওয়া আছে):</label>
-                        <input id="key-ocrspace" type="text" value="helloworld" placeholder="helloworld বা ফ্রি কী" class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-indigo-500">
-                    </div>
-                    <div>
-                        <label class="font-semibold text-slate-700 block mb-0.5">Groq Free Open-Source Vision Key (console.groq.com):</label>
-                        <input id="key-groq" type="password" placeholder="gsk_..." class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-indigo-500">
-                    </div>
-                    <div>
-                        <label class="font-semibold text-slate-700 block mb-0.5">OpenRouter Free Vision Key (openrouter.ai — ফ্রি মডেল):</label>
-                        <input id="key-openrouter" type="password" placeholder="sk-or-v1-..." class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-indigo-500">
-                    </div>
-                    <div>
-                        <label class="font-semibold text-slate-700 block mb-0.5">Google Gemini API Key (ঐচ্ছিক):</label>
-                        <input id="key-gemini" type="password" placeholder="AIzaSy..." class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-indigo-500">
-                    </div>
-                    <div>
-                        <label class="font-semibold text-slate-700 block mb-0.5">OpenAI ChatGPT API Key (GPT-4o Vision):</label>
-                        <input id="key-openai" type="password" placeholder="sk-proj-..." class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-indigo-500">
-                    </div>
-                    <div>
-                        <label class="font-semibold text-slate-700 block mb-0.5">Anthropic Claude API Key (Claude 3.5 Sonnet):</label>
-                        <input id="key-claude" type="password" placeholder="sk-ant-..." class="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono text-xs focus:outline-none focus:border-indigo-500">
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
-                <button id="save-ai-settings-btn" type="button" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xs cursor-pointer">
-                    সেটিংস সেভ করুন
+                <button id="close-scale-modal" type="button" class="icon-btn" aria-label="বন্ধ করুন">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
                 </button>
+            </div>
+            <div id="editable-grade-grid"></div>
+            <div class="sheet-foot split">
+                <button id="reset-grade-scale-btn" type="button" class="btn btn-ghost">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M4 4v6h6M4.5 15a8 8 0 100-6L4 10"/></svg>
+                    ডিফল্টে ফিরুন
+                </button>
+                <button id="save-grade-scale-btn" type="button" class="btn btn-primary">সেভ করুন</button>
             </div>
         </div>
     </div>
 
-    <!-- Editable Custom Grade Scale Modal (Supports Both 4.00 University & 5.00 School/College) -->
-    <div id="grade-scale-modal" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-slate-200 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+    <!-- ================= LIGHTBOX ================= -->
+    <div id="image-lightbox-modal" class="hidden modal" role="dialog" aria-modal="true" aria-labelledby="lightbox-title">
+        <div class="sheet sheet-wide" tabindex="-1">
+            <div class="sheet-h">
+                <h3 id="lightbox-title">রেজাল্ট শিট প্রিভিউ</h3>
+                <button id="close-lightbox-btn" type="button" class="icon-btn" aria-label="বন্ধ করুন">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                </button>
+            </div>
+            <div class="lightbox-body">
+                <img id="lightbox-img" src="" alt="আপলোড করা রেজাল্ট শিট">
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= CARD NAME MODAL ================= -->
+    <div id="card-name-modal" class="hidden modal" role="dialog" aria-modal="true" aria-labelledby="card-modal-title">
+        <div class="sheet" tabindex="-1">
+            <div class="sheet-h">
                 <div>
-                    <h3 id="scale-modal-title" class="text-base font-bold text-slate-900">⚙️ কাস্টম গ্রেড পয়েন্ট স্কেল এডিটর</h3>
-                    <p class="text-[11px] text-slate-500">যেকোনো গ্রেডের পয়েন্ট নিজের বিশ্ববিদ্যালয় বা বোর্ড অনুযায়ী পরিবর্তন করতে পারবেন</p>
+                    <h3 id="card-modal-title">রেজাল্ট কার্ডে নাম যোগ করুন</h3>
+                    <p>১০৮০×১০৮০ হাই-রেজোলিউশন স্কয়ার কার্ড তৈরি হবে।</p>
                 </div>
-                <button id="close-scale-modal" type="button" class="text-xs font-bold bg-slate-100 hover:bg-rose-100 hover:text-rose-700 text-slate-700 px-2.5 py-1 rounded-lg cursor-pointer">✕</button>
-            </div>
-            <div id="editable-grade-grid" class="grid grid-cols-2 gap-2.5 text-xs font-mono"></div>
-            <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                <button id="reset-grade-scale-btn" type="button" class="text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 px-3 py-2 rounded-xl cursor-pointer">
-                    ↺ ডিফল্ট রিসেট
-                </button>
-                <button id="save-grade-scale-btn" type="button" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xs cursor-pointer">
-                    ✓ গ্রেড স্কেল সেভ করুন
+                <button id="close-card-name-modal" type="button" class="icon-btn" aria-label="বন্ধ করুন">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
                 </button>
             </div>
-        </div>
-    </div>
-
-    <!-- Image Lightbox Modal -->
-    <div id="image-lightbox-modal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-4xl w-full p-4 shadow-2xl border border-slate-200 space-y-3">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-                <h4 id="lightbox-title" class="text-xs sm:text-sm font-bold text-slate-900 truncate">রেজাল্ট শিট প্রিভিউ</h4>
-                <button id="close-lightbox-btn" type="button" class="text-xs font-bold bg-slate-100 hover:bg-rose-100 hover:text-rose-700 text-slate-700 px-3 py-1 rounded-lg cursor-pointer">✕ বন্ধ করুন</button>
+            <div class="field">
+                <label for="card-student-name-input">শিক্ষার্থীর নাম (ঐচ্ছিক)</label>
+                <input id="card-student-name-input" type="text" placeholder="যেমন: তানভীর আহমেদ" class="input" autocomplete="name">
+                <span class="help">নাম ছাড়া নিতে চাইলে "নাম ছাড়া ডাউনলোড" চাপুন।</span>
             </div>
-            <div class="bg-slate-100 rounded-xl p-3 flex items-center justify-center max-h-[75vh] overflow-auto">
-                <img id="lightbox-img" src="" alt="Result Sheet" class="max-w-full h-auto rounded-lg shadow">
-            </div>
-        </div>
-    </div>
-
-    <!-- Name Input Modal for 1:1 Square Result Card -->
-    <div id="card-name-modal" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-lg">🎓</div>
-                    <div>
-                        <h3 class="text-base font-bold text-slate-900">রেজাল্ট কার্ডে আপনার নাম লিখুন</h3>
-                        <p class="text-[11px] text-slate-500">১:১ স্কয়ার (1080×1080) হাই-রেজোলিউশন কার্ড তৈরি হবে</p>
-                    </div>
+            <div class="field">
+                <span class="field-label">কার্ডের রঙ</span>
+                <div id="card-theme-picker" class="themes" role="group" aria-label="কার্ডের রঙ">
+                    <button type="button" class="theme-opt" data-theme="light"><i style="background:#F4F7F5;border-color:#0B6B54"></i>সাদা</button>
+                    <button type="button" class="theme-opt" data-theme="navy"><i style="background:#0E1A33;border-color:#7FB2FF"></i>নেভি</button>
+                    <button type="button" class="theme-opt" data-theme="emerald"><i style="background:#082A22;border-color:#E8BB4E"></i>সবুজ</button>
                 </div>
-                <button id="close-card-name-modal" type="button" class="text-xs font-bold bg-slate-100 hover:bg-rose-100 hover:text-rose-700 text-slate-700 px-2.5 py-1 rounded-lg cursor-pointer">✕</button>
             </div>
-
-            <div class="space-y-2">
-                <label for="card-student-name-input" class="text-xs font-bold text-slate-700 block">শিক্ষার্থীর নাম (ঐচ্ছিক / Optional):</label>
-                <input id="card-student-name-input" type="text" placeholder="যেমন: তানভীর আহমেদ বা Tanvir Ahmed" class="w-full bg-slate-50 border-2 border-slate-200 focus:border-emerald-600 focus:bg-white rounded-xl px-3.5 py-2.5 text-sm font-semibold text-slate-900 focus:outline-none transition">
-                <p class="text-[11px] text-slate-500">নাম না লিখতে চাইলে সরাসরি <strong>"স্কিপ ও ডাউনলোড"</strong> বাটনে ক্লিক করুন।</p>
-            </div>
-
-            <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                <button id="skip-card-name-btn" type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-4 py-2.5 rounded-xl transition cursor-pointer">
-                    স্কিপ ও ডাউনলোড
-                </button>
-                <button id="confirm-card-download-btn" type="button" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md shadow-emerald-600/20 transition cursor-pointer">
-                    ✨ নামসহ ডাউনলোড করুন
-                </button>
+            <div class="sheet-foot">
+                <button id="skip-card-name-btn" type="button" class="btn btn-ghost">নাম ছাড়া ডাউনলোড</button>
+                <button id="confirm-card-download-btn" type="button" class="btn btn-primary">নামসহ ডাউনলোড</button>
             </div>
         </div>
     </div>
 
-    <!-- Safe Footer -->
-    <footer class="mt-8 bg-white/80 border-t border-slate-200/80 py-4 px-4">
-        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-600">
-            <div class="font-bold text-indigo-700">Smart AI & OCR CGPA Calculator</div>
-            <div>যেকোনো বিশ্ববিদ্যালয় ও স্কুল/কলেজ রেজাল্ট শিট থেকে স্বয়ংক্রিয় GPA ও CGPA হিসাব</div>
+    <!-- ================= FOOTER ================= -->
+    <footer class="footer">
+        <div class="wrap footer-in">
+            <b>Smart AI & OCR CGPA Calculator</b>
+            <span>বিশ্ববিদ্যালয় ও স্কুল/কলেজের রেজাল্ট থেকে GPA ও CGPA হিসাব। তথ্য শুধু আপনার ব্রাউজারে সেভ থাকে।</span>
         </div>
     </footer>
 
-    <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
-        <div class="bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl border border-slate-700 text-xs sm:text-sm font-medium flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span id="toast-message">সম্পন্ন হয়েছে!</span>
+    <!-- Mobile live-score dock -->
+    <div id="dock" class="dock" aria-hidden="true">
+        <div class="dock-score"><span id="dock-label">আপনার ফলাফল</span><b id="dock-cgpa">0.00</b></div>
+        <button id="dock-action" type="button" class="btn btn-primary" tabindex="-1">
+            <svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M8 11l4 4 4-4M5 19h14"/></svg>
+            কার্ড ডাউনলোড
+        </button>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" role="status" aria-live="polite" class="toast">
+        <div class="toast-in">
+            <span class="toast-dot"></span>
+            <span id="toast-message">সম্পন্ন হয়েছে!</span>
+            <button id="toast-action" type="button" class="toast-action hidden"></button>
         </div>
     </div>
 
@@ -521,13 +967,13 @@
         function renderEditableGradeModal() {
             const activeMap = getActiveGradeMap();
             scaleModalTitle.textContent = eduSystem === 'school'
-                ? '⚙️ স্কুল / কলেজ গ্রেড স্কেল এডিটর (5.00 Scale)'
-                : '⚙️ বিশ্ববিদ্যালয় গ্রেড স্কেল এডিটর (4.00 Scale)';
+                ? 'স্কুল / কলেজ গ্রেড স্কেল (৫.০০)'
+                : 'বিশ্ববিদ্যালয় গ্রেড স্কেল (৪.০০)';
 
             editableGradeGrid.innerHTML = Object.entries(activeMap).map(([grade, pts]) => `
-                <div class="bg-slate-50 border border-slate-200 p-2.5 rounded-xl flex items-center justify-between gap-2">
-                    <strong class="text-sm font-bold ${grade === 'F' ? 'text-rose-600' : 'text-slate-900'}">${grade}</strong>
-                    <input type="number" step="0.01" min="0" max="10" data-grade="${grade}" value="${Number(pts).toFixed(2)}" class="grade-scale-input w-24 bg-white border border-slate-300 focus:border-indigo-500 rounded-lg px-2 py-1 text-right font-bold text-indigo-700 focus:outline-none">
+                <div class="gcell">
+                    <strong class="${grade === 'F' ? 'is-f' : ''}">${grade}</strong>
+                    <input type="number" inputmode="decimal" step="0.01" min="0" max="10" data-grade="${grade}" aria-label="${grade} গ্রেডের পয়েন্ট" value="${Number(pts).toFixed(2)}" class="grade-scale-input">
                 </div>
             `).join('');
         }
@@ -575,10 +1021,8 @@
         document.querySelectorAll('.edu-sys-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 eduSystem = btn.dataset.eduSystem;
-                document.querySelectorAll('.edu-sys-btn').forEach(b => {
-                    b.className = 'edu-sys-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition cursor-pointer';
-                });
-                btn.className = 'edu-sys-btn active px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-xs transition cursor-pointer';
+                document.querySelectorAll('.edu-sys-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
+                btn.classList.add('active'); btn.setAttribute('aria-pressed', 'true');
 
                 const isSchool = eduSystem === 'school';
                 document.getElementById('header-scale-badge').textContent = isSchool ? 'SSC/HSC 5.00 Scale' : 'UGC 4.00 Scale';
@@ -667,21 +1111,25 @@
             });
         }
 
-        const VISION_EXTRACTION_PROMPT = `Analyze this academic result sheet / transcript image carefully.
-Extract EVERY single course or subject row visible in the table, regardless of how many columns or rows exist.
+        const VISION_EXTRACTION_PROMPT = `You are transcribing a university / college result sheet image. Copy the course table EXACTLY as printed.
+Rules:
+1. Return EVERY row of the table, top to bottom, in the order shown. Never skip, merge or invent rows. If two rows share the same course name, keep both.
+2. Letter grades carry small suffixes: A+, A, A-, B+, B, B-, C+, C, D, F. The "+" and "-" signs are small but they change the result: B+ is not B, and B- is not B. Look at every grade cell on its own and read the sign before answering. Never drop a printed sign and never add one that is not printed.
+3. Read "credit" from the Credit column only (for example 3.00, 2.00, 1.50, 1.00).
+4. Do not guess. Use only what is visible in the image.
 Return ONLY a valid JSON array of objects, with no markdown fences or extra commentary.
 Each object MUST have these exact keys:
 - "courseCode": Course/Subject code string (e.g., "CSE 101", "101").
-- "courseName": Clean course/subject title ONLY (e.g., "Structured Programming", "Bangla"). Do NOT include course code, grades, "Regular", or dropdown arrows in courseName.
+- "courseName": Clean course/subject title ONLY. Do NOT include the course code, grade, "Regular", or dropdown arrows.
 - "credit": Numeric credit hours (e.g., 3.00, 1.50, 2.00, or 0 if school/college board sheet).
 - "courseType": Strictly "Theoretical", "Sessional", "Compulsory", or "Optional" (Practical/Lab/Sessional/Viva = "Sessional"; 4th/Optional subject = "Optional"; otherwise "Theoretical").
 - "repeatStatus": "Regular" or "Repeat".
-- "letterGrade": Exact letter grade earned ("A+", "A", "A-", "B+", "B", "B-", "C+", "C", "D", or "F").`;
+- "letterGrade": Exact letter grade including its sign ("A+", "A", "A-", "B+", "B", "B-", "C+", "C", "D", or "F").`;
 
         async function extractCoursesWithGeminiVision(base64Data, mimeType) {
             const apiKey = keyGeminiInput.value.trim();
             if (!apiKey) throw new Error('Gemini API Key missing');
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
 
             const payload = {
                 contents: [{
@@ -693,6 +1141,7 @@ Each object MUST have these exact keys:
                 }],
                 generationConfig: {
                     responseMimeType: "application/json",
+                    temperature: 0,
                     responseSchema: {
                         type: "ARRAY",
                         items: {
@@ -703,7 +1152,7 @@ Each object MUST have these exact keys:
                                 credit: { type: "NUMBER" },
                                 courseType: { type: "STRING" },
                                 repeatStatus: { type: "STRING" },
-                                letterGrade: { type: "STRING" }
+                                letterGrade: { type: "STRING", enum: getValidGradesList() }
                             },
                             required: ["courseCode", "courseName", "credit", "courseType", "letterGrade"]
                         }
@@ -713,7 +1162,7 @@ Each object MUST have these exact keys:
 
             const response = await fetch(apiUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
                 body: JSON.stringify(payload)
             });
             if (!response.ok) throw new Error(`Gemini HTTP ${response.status}`);
@@ -770,7 +1219,7 @@ Each object MUST have these exact keys:
                     'anthropic-dangerous-direct-browser-access': 'true'
                 },
                 body: JSON.stringify({
-                    model: 'claude-3-5-sonnet-20241022',
+                    model: 'claude-sonnet-5-5',
                     max_tokens: 4096,
                     temperature: 0,
                     messages: [{
@@ -853,14 +1302,171 @@ Each object MUST have these exact keys:
         }
 
         // 100% Free Built-In OCR.Space Table Recognition Engine (Works out of the box without signup!)
-        async function extractCoursesWithOCRSpaceTable(dataUrl) {
+        // ================= OCR ACCURACY HELPERS =================
+        function loadImageEl(src) {
+            return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+        }
+
+        // Upscale small screenshots (and shrink oversized files) before OCR / vision models
+        async function prepareImageForOcr(dataUrl, mimeType) {
+            const original = { dataUrl, base64: dataUrl.split(',')[1], mimeType };
+            try {
+                const img = await loadImageEl(dataUrl);
+                const w = img.naturalWidth, h = img.naturalHeight;
+                const smallFile = original.base64.length * 0.75 < 950000;
+                if (w >= 1500 && smallFile) return original;
+                let k = w < 1500 ? Math.min(2.5, 2400 / w, 4200 / h) : Math.min(1, 2600 / w, 4200 / h);
+                for (let attempt = 0; attempt < 4; attempt++) {
+                    const cw = Math.round(w * k), ch = Math.round(h * k);
+                    const cv = document.createElement('canvas');
+                    cv.width = cw; cv.height = ch;
+                    const cx = cv.getContext('2d');
+                    cx.fillStyle = '#fff'; cx.fillRect(0, 0, cw, ch);
+                    cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+                    cx.drawImage(img, 0, 0, cw, ch);
+                    for (const q of [0.92, 0.82, 0.7]) {
+                        const out = cv.toDataURL('image/jpeg', q);
+                        const b64 = out.split(',')[1];
+                        if (b64.length * 0.75 < 950000) return { dataUrl: out, base64: b64, mimeType: 'image/jpeg' };
+                    }
+                    k *= 0.8;
+                }
+            } catch (e) {}
+            return original;
+        }
+
+        function cleanGradeToken(txt, valid) {
+            const t = String(txt || '').toUpperCase().replace(/[\u2212\u2013\u2014\u2010\u2011_~]/g, '-').replace(/[^A-DF+\-]/g, '');
+            const m = t.match(/^([A-DF])([+\-]?)/);
+            if (!m) return '';
+            const g = m[1] + m[2];
+            return valid.includes(g) ? g : (valid.includes(m[1]) ? m[1] : '');
+        }
+
+        // Crop one grade cell, enlarge it and clean it up for single-line OCR
+        function cropGradeCell(img, box, variant) {
+            const bh = Math.max(8, box.y1 - box.y0);
+            const sx = Math.max(0, box.x0 - bh * 0.35), sy = Math.max(0, box.y0 - bh * 0.45);
+            const ex = Math.min(img.naturalWidth, box.x1 + bh * 1.1), ey = Math.min(img.naturalHeight, box.y1 + bh * 0.45);
+            const sw = Math.max(4, ex - sx), sh = Math.max(4, ey - sy);
+            const k = 150 / sh, pad = 40;
+            const cv = document.createElement('canvas');
+            cv.width = Math.round(sw * k) + pad * 2;
+            cv.height = Math.round(sh * k) + pad * 2;
+            const cx = cv.getContext('2d', { willReadFrequently: true });
+            cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+            cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+            cx.drawImage(img, sx, sy, sw, sh, pad, pad, Math.round(sw * k), Math.round(sh * k));
+            const id = cx.getImageData(0, 0, cv.width, cv.height), d = id.data;
+            const lum = new Uint8Array(d.length / 4), hist = new Array(256).fill(0);
+            for (let p = 0, q = 0; p < d.length; p += 4, q++) {
+                const l = Math.round(0.299 * d[p] + 0.587 * d[p + 1] + 0.114 * d[p + 2]);
+                lum[q] = l; hist[l]++;
+            }
+            let total = lum.length, sum = 0;
+            for (let t = 0; t < 256; t++) sum += t * hist[t];
+            let sumB = 0, wB = 0, best = 0, thr = 128;
+            for (let t = 0; t < 256; t++) {
+                wB += hist[t]; if (!wB) continue;
+                const wF = total - wB; if (!wF) break;
+                sumB += t * hist[t];
+                const mB = sumB / wB, mF = (sum - sumB) / wF;
+                const v = wB * wF * (mB - mF) * (mB - mF);
+                if (v > best) { best = v; thr = t; }
+            }
+            for (let p = 0, q = 0; p < d.length; p += 4, q++) {
+                const v = variant === 'bin'
+                    ? (lum[q] > thr ? 255 : 0)
+                    : Math.max(0, Math.min(255, (lum[q] - (thr - 60)) * (255 / 120)));
+                d[p] = d[p + 1] = d[p + 2] = v;
+            }
+            cx.putImageData(id, 0, 0);
+            return cv;
+        }
+
+        // Match grade words from OCR.Space overlay data to extracted rows (needs the same count)
+        function attachGradeBoxesFromOverlay(lines, rows) {
+            const words = [];
+            (lines || []).forEach(l => (l.Words || []).forEach(w => {
+                const x0 = Number(w.Left), y0 = Number(w.Top);
+                words.push({ t: String(w.WordText || '').trim(), x0, y0, x1: x0 + Number(w.Width), y1: y0 + Number(w.Height) });
+            }));
+            const cand = words.filter(w => /^[A-DF][+\-\u2212\u2013]?$/i.test(w.t) && isFinite(w.x0) && isFinite(w.y0));
+            if (!cand.length) return;
+            const maxX = Math.max(...cand.map(w => w.x0));
+            const col = cand.filter(w => w.x0 >= maxX - Math.max(40, (w.y1 - w.y0) * 3)).sort((a, b) => a.y0 - b.y0);
+            if (col.length === rows.length) rows.forEach((r, i) => { r._gradeBox = col[i]; });
+        }
+
+        // Second opinion on every grade cell: enlarged crop + letters-only OCR, then vote.
+        // The usual OCR mistake is dropping the small + / - sign, so a signed reading wins ties.
+        async function refineGradeCellsWithTesseract(dataUrl, rows, onProgress) {
+            const valid = getValidGradesList();
+            const targets = rows.filter(r => r._gradeBox);
+            if (typeof Tesseract !== 'undefined' && targets.length) {
+                let worker = null;
+                try {
+                    const img = await loadImageEl(dataUrl);
+                    const inside = targets.every(r => r._gradeBox.x0 >= 0 && r._gradeBox.y0 >= 0 &&
+                        r._gradeBox.x1 <= img.naturalWidth * 1.02 && r._gradeBox.y1 <= img.naturalHeight * 1.02);
+                    if (inside) {
+                        worker = await Tesseract.createWorker('eng');
+                        await worker.setParameters({ tessedit_char_whitelist: 'ABCDF+-', tessedit_pageseg_mode: '7' });
+                        let n = 0;
+                        for (const r of targets) {
+                            const reads = [];
+                            for (const variant of ['gray', 'bin']) {
+                                try {
+                                    const out = await worker.recognize(cropGradeCell(img, r._gradeBox, variant));
+                                    const g = cleanGradeToken(out.data.text, valid);
+                                    if (g) reads.push(g);
+                                } catch (e) {}
+                            }
+                            const original = valid.includes(r.letterGrade) ? r.letterGrade : '';
+                            const votes = {};
+                            [original, ...reads].filter(Boolean).forEach(g => { votes[g] = (votes[g] || 0) + 1; });
+                            const ranked = Object.entries(votes).sort((a, b) => b[1] - a[1] || b[0].length - a[0].length);
+                            if (ranked.length) {
+                                r.letterGrade = ranked[0][0];
+                                r.gradeUncertain = !(ranked.length === 1 && reads.length >= 2);
+                            } else {
+                                r.gradeUncertain = true;
+                            }
+                            n++;
+                            if (onProgress) onProgress(n / targets.length);
+                        }
+                        rows.refined = true;
+                    }
+                } catch (e) {
+                } finally {
+                    if (worker) { try { await worker.terminate(); } catch (e) {} }
+                }
+            }
+            // Anything we could not double-check: an unsigned A / B / C may have lost its sign
+            rows.forEach(r => {
+                if (r.gradeUncertain === undefined) {
+                    r.gradeUncertain = !valid.includes(r.letterGrade) || (eduSystem !== 'school' && /^[ABC]$/.test(r.letterGrade));
+                }
+            });
+            return rows;
+        }
+
+        const ocrResultCache = new Map();
+        function hashString(str) {
+            let h = 2166136261;
+            for (let i = 0; i < str.length; i += 7) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+            return (h >>> 0).toString(16) + ':' + str.length;
+        }
+
+        async function extractCoursesWithOCRSpaceTable(dataUrl, onStatus) {
             const apiKey = keyOcrspaceInput.value.trim() || 'helloworld';
             const formData = new FormData();
             formData.append('base64Image', dataUrl);
             formData.append('language', 'eng');
             formData.append('isTable', 'true');
             formData.append('OCREngine', '2');
-            formData.append('scale', 'true');
+            formData.append('scale', 'false');
+            formData.append('isOverlayRequired', 'true');
 
             const response = await fetch('https://api.ocr.space/parse/image', {
                 method: 'POST',
@@ -908,7 +1514,7 @@ Each object MUST have these exact keys:
 
                 let foundGrade = '';
                 for (let i = afterCols.length - 1; i >= 0; i--) {
-                    const cleanToken = afterCols[i].toUpperCase().replace(/[^A-DF+-]/g, '');
+                    const cleanToken = afterCols[i].toUpperCase().replace(/[\u2212\u2013\u2014\u2010\u2011]/g, '-').replace(/[^A-DF+-]/g, '');
                     if (validGrades.includes(cleanToken)) {
                         foundGrade = cleanToken;
                         break;
@@ -921,10 +1527,13 @@ Each object MUST have these exact keys:
                     credit,
                     courseType: isSessional ? 'Sessional' : 'Theoretical',
                     repeatStatus: isRepeat ? 'Repeat' : 'Regular',
-                    letterGrade: foundGrade || 'A+'
+                    letterGrade: foundGrade
                 });
             }
             if (extracted.length === 0) throw new Error('No table rows matched');
+            attachGradeBoxesFromOverlay(res?.ParsedResults?.[0]?.TextOverlay?.Lines, extracted);
+            if (onStatus) onStatus('OCR.Space টেবিলের +/− চিহ্ন যাচাই করা হচ্ছে...');
+            await refineGradeCellsWithTesseract(dataUrl, extracted, null);
             return extracted;
         }
 
@@ -1012,7 +1621,7 @@ Each object MUST have these exact keys:
                 .map(w => ({
                     word: w,
                     cy: (w.bbox.y0 + w.bbox.y1) / 2,
-                    grade: w.text.trim().toUpperCase().replace(/[^A-DF+-]/g, '')
+                    grade: w.text.trim().toUpperCase().replace(/[\u2212\u2013\u2014\u2010\u2011]/g, '-').replace(/[^A-DF+-]/g, '')
                 }))
                 .filter(item => item.word.bbox.x0 >= colBounds.statusMaxX * 0.92 && validGrades.includes(item.grade));
 
@@ -1030,12 +1639,14 @@ Each object MUST have these exact keys:
                 const bandBottom = (anchorCy + nextCy) / 2;
 
                 let matchedLg = '';
+                let matchedWord = null;
                 let bestLgDist = Infinity;
                 for (const lgItem of lgAnchors) {
                     const dist = Math.abs(lgItem.cy - anchorCy);
                     if (lgItem.cy >= bandTop && lgItem.cy <= bandBottom && dist < bestLgDist) {
                         bestLgDist = dist;
                         matchedLg = lgItem.grade;
+                        matchedWord = lgItem.word;
                     }
                 }
 
@@ -1065,9 +1676,15 @@ Each object MUST have these exact keys:
                     credit,
                     courseType: isSessional ? 'Sessional' : 'Theoretical',
                     repeatStatus: isRepeat ? 'Repeat' : 'Regular',
-                    letterGrade: matchedLg || 'A+'
+                    letterGrade: matchedLg,
+                    _gradeBox: matchedWord
+                        ? { x0: matchedWord.bbox.x0 / scale, y0: matchedWord.bbox.y0 / scale, x1: matchedWord.bbox.x1 / scale, y1: matchedWord.bbox.y1 / scale }
+                        : { x0: colBounds.statusMaxX / scale, y0: cWord.bbox.y0 / scale, x1: Math.min(cw, colBounds.statusMaxX + (cWord.bbox.y1 - cWord.bbox.y0) * 5) / scale, y1: cWord.bbox.y1 / scale }
                 });
             }
+            await refineGradeCellsWithTesseract(dataUrl, extracted, p => {
+                if (typeof onProgress === 'function') onProgress(Math.round(90 + p * 10));
+            });
             return extracted;
         }
 
@@ -1080,7 +1697,7 @@ Each object MUST have these exact keys:
                 .trim()
                 .toUpperCase();
             let rawName = String(raw.courseName || 'Untitled Course').trim();
-            let rawGrade = String(raw.letterGrade || '').trim().toUpperCase().replace(/\s+/g, '');
+            let rawGrade = String(raw.letterGrade || '').trim().toUpperCase().replace(/[\u2212\u2013\u2014\u2010\u2011]/g, '-').replace(/\s+/g, '');
             if (eduSystem === 'school' && !validGrades.includes(rawGrade)) {
                 rawGrade = rawGrade.replace(/[+-]/, '');
             }
@@ -1114,8 +1731,10 @@ Each object MUST have these exact keys:
 
             rawName = rawName.replace(/\b(?:Regular|Repeat)\b/gi, '').trim();
 
+            const gradeGuessed = !validGrades.includes(rawGrade) || !!raw.gradeUncertain;
             const letterGrade = validGrades.includes(rawGrade) ? rawGrade : 'A+';
             const credit = Math.max(0, parseFloat(raw.credit) || 0);
+            const creditGuessed = eduSystem !== 'school' && credit <= 0;
             const isOptional = /optional|4th|fourth/i.test(String(raw.courseType || '') + ' ' + rawName);
             const isSessional = /sessional|practical|lab|viva/i.test(String(raw.courseType || ''));
             const isRepeat = /repeat/i.test(String(raw.repeatStatus || ''));
@@ -1129,12 +1748,14 @@ Each object MUST have these exact keys:
                 subjectRole: isOptional ? 'Optional' : 'Compulsory',
                 repeatStatus: isRepeat ? 'Repeat' : 'Regular',
                 letterGrade,
+                gradeGuessed,
+                creditGuessed,
                 sourceLabel
             };
         }
 
         // Complete Multi-Model Hybrid Extraction Pipeline
-        async function runHybridExtractionPipeline(dataUrl, base64, mimeType, onStatus) {
+        async function runHybridExtractionPipelineCore(dataUrl, base64, mimeType, onStatus, origDataUrl) {
             const mode = aiProviderSelect.value;
 
             const tryGemini = async () => {
@@ -1154,16 +1775,16 @@ Each object MUST have these exact keys:
                 return await extractCoursesWithOpenAIVision(dataUrl);
             };
             const tryClaude = async () => {
-                onStatus('Claude 3.5 Vision বিশ্লেষণ করছে...');
+                onStatus('Claude Vision বিশ্লেষণ করছে...');
                 return await extractCoursesWithClaudeVision(base64, mimeType);
             };
             const tryOCRSpace = async () => {
                 onStatus('OCR.Space Free Table ইঞ্জিন টেবিল পড়ছে...');
-                return await extractCoursesWithOCRSpaceTable(dataUrl);
+                return await extractCoursesWithOCRSpaceTable(dataUrl, onStatus);
             };
             const tryDeepOCR = async () => {
                 onStatus('অফলাইন 2.5x Upscaled Table OCR ইঞ্জিন পড়ছে...');
-                return await extractCoursesWithDeepTableOCR(dataUrl, pct => {
+                return await extractCoursesWithDeepTableOCR(origDataUrl || dataUrl, pct => {
                     ocrProgressBar.style.width = `${pct}%`;
                     ocrProgressPct.textContent = `${pct}%`;
                 });
@@ -1221,7 +1842,39 @@ Each object MUST have these exact keys:
             return await tryDeepOCR();
         }
 
+        async function runHybridExtractionPipeline(dataUrl, base64, mimeType, onStatus, origDataUrl) {
+            const orig = origDataUrl || dataUrl;
+            const keyState = [keyGeminiInput, keyGroqInput, keyOpenrouterInput, keyOpenaiInput, keyClaudeInput].map(k => k.value.trim() ? 1 : 0).join('');
+            const cacheKey = `${aiProviderSelect.value}|${keyState}|${eduSystem}|${hashString(orig)}`;
+            if (ocrResultCache.has(cacheKey)) {
+                const hit = ocrResultCache.get(cacheKey);
+                const rows = hit.rows.map(r => ({ ...r }));
+                rows.engine = hit.engine + ' (সংরক্ষিত ফল)';
+                return rows;
+            }
+            let lastLabel = '';
+            const rows = await runHybridExtractionPipelineCore(dataUrl, base64, mimeType, l => { lastLabel = l; onStatus(l); }, orig);
+            let engine = /Gemini/.test(lastLabel) ? 'Gemini'
+                : /Groq/.test(lastLabel) ? 'Groq'
+                : /OpenRouter/.test(lastLabel) ? 'OpenRouter'
+                : /OpenAI/.test(lastLabel) ? 'GPT-4o'
+                : /Claude/.test(lastLabel) ? 'Claude'
+                : /OCR\.Space/.test(lastLabel) ? 'OCR.Space'
+                : 'অফলাইন OCR';
+            if (rows.refined) engine += ' + গ্রেড যাচাই';
+            rows.engine = engine;
+            if (rows.length) ocrResultCache.set(cacheKey, { rows: rows.map(r => ({ ...r })), engine });
+            return rows;
+        }
+
+        let uploadBusy = false;
         async function processUploadedResultImages(fileList) {
+            if (uploadBusy) { showToast('আগের ছবির কাজ চলছে, একটু অপেক্ষা করুন।'); return; }
+            uploadBusy = true;
+            try { await processUploadedResultImagesCore(fileList); } finally { uploadBusy = false; }
+        }
+
+        async function processUploadedResultImagesCore(fileList) {
             const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
             if (files.length === 0) {
                 showToast('অনুগ্রহ করে বৈধ রেজাল্ট শিটের ছবি দিন।');
@@ -1229,7 +1882,10 @@ Each object MUST have these exact keys:
             }
 
             ocrProgressWrap.classList.remove('hidden');
-            let totalAdded = 0;
+            ocrProgressBar.style.width = '0%';
+            ocrProgressPct.textContent = '0%';
+            let totalAdded = 0, uncertainAdded = 0;
+            const enginesUsed = new Set();
 
             for (let i = 0; i < files.length; i++) {
                 const file = files[i];
@@ -1239,17 +1895,26 @@ Each object MUST have these exact keys:
 
                 try {
                     const { dataUrl, base64, mimeType } = await fileToBase64AndUrl(file);
-                    uploadedImages.push({ name: file.name, dataUrl });
+                    const imgHash = hashString(dataUrl);
+                    if (uploadedImages.some(u => u.hash === imgHash)) {
+                        showToast(`"${file.name}" আগেই যোগ করা হয়েছে, তাই আবার যোগ করা হয়নি।`);
+                        continue;
+                    }
+                    uploadedImages.push({ name: file.name, dataUrl, hash: imgHash });
                     renderUploadedThumbs();
 
-                    const rows = await runHybridExtractionPipeline(dataUrl, base64, mimeType, label => {
-                        ocrProgressLabel.innerHTML = `<span class="w-2 h-2 rounded-full bg-indigo-600 animate-ping"></span> (${i + 1}/${files.length}) ${label}`;
-                    });
+                    const prep = await prepareImageForOcr(dataUrl, mimeType);
+                    const rows = await runHybridExtractionPipeline(prep.dataUrl, prep.base64, prep.mimeType, label => {
+                        ocrProgressLabel.innerHTML = `<span class="spinner"></span> (${i + 1}/${files.length}) ${label}`;
+                    }, dataUrl);
 
                     if (rows.length > 0) {
+                        if (rows.engine) enginesUsed.add(rows.engine);
                         rows.forEach(r => {
-                            coursesList.push(normalizeCourseItem(r, file.name));
+                            const item = normalizeCourseItem(r, file.name);
+                            coursesList.push(item);
                             totalAdded++;
+                            if (item.gradeGuessed || item.creditGuessed) uncertainAdded++;
                         });
                     }
                 } catch (err) {
@@ -1265,10 +1930,7 @@ Each object MUST have these exact keys:
             if (totalAdded > 0) {
                 ocrVerifyBanner.classList.remove('hidden');
                 clearTimeout(verifyBannerTimer);
-                verifyBannerTimer = setTimeout(() => {
-                    ocrVerifyBanner.classList.add('hidden');
-                }, 8000);
-                showToast(`⚠️ ${totalAdded}টি সাবজেক্ট যোগ হয়েছে! মিস্টেক এড়াতে ক্রেডিট ও গ্রেড একবার চেক করে নিন।`);
+                showToast(`${totalAdded}টি সাবজেক্ট যোগ হয়েছে (${[...enginesUsed].join(', ')})।` + (uncertainAdded ? ` ${uncertainAdded}টি ঘর হলুদ চিহ্নিত, আগে সেগুলো মিলিয়ে নিন।` : ' ক্রেডিট ও গ্রেড একবার মিলিয়ে নিন।'));
             } else {
                 showToast('ছবি থেকে কোনো কোর্স টেবিল পাওয়া যায়নি, পরিষ্কার রেজাল্ট শিটের ছবি দিন।');
             }
@@ -1282,9 +1944,9 @@ Each object MUST have these exact keys:
             }
             uploadedThumbsWrap.classList.remove('hidden');
             uploadedThumbsList.innerHTML = uploadedImages.map((imgObj, idx) => `
-                <button type="button" data-idx="${idx}" class="thumb-preview-btn group relative border border-slate-200 hover:border-indigo-500 rounded-xl p-1 bg-slate-50 flex items-center gap-1.5 pr-2.5 cursor-pointer transition">
-                    <img src="${imgObj.dataUrl}" alt="" class="w-9 h-9 object-cover rounded-lg">
-                    <span class="text-[11px] font-medium text-slate-700 max-w-[100px] truncate">${escapeHtml(imgObj.name)}</span>
+                <button type="button" data-idx="${idx}" class="thumb-preview-btn thumb" title="প্রিভিউ দেখুন">
+                    <img src="${imgObj.dataUrl}" alt="">
+                    <span>${escapeHtml(imgObj.name)}</span>
                 </button>
             `).join('');
 
@@ -1301,6 +1963,7 @@ Each object MUST have these exact keys:
 
         // ================= CORE CGPA CALCULATION & TABLE RENDER =================
         function recalculateAndRender() {
+            saveSession();
             const gradeMap = getActiveGradeMap();
 
             if (eduSystem === 'school') {
@@ -1348,7 +2011,7 @@ Each object MUST have these exact keys:
                 statSessionalGpa.textContent = optCount > 0 ? `+${optBonusSum.toFixed(2)} বোনাস` : 'নেই';
                 statSessionalCredits.textContent = optCount > 0 ? `মূল GP: ${optRawGp.toFixed(2)}` : 'ঐচ্ছিক বিষয় যুক্ত করুন';
 
-                document.getElementById('footer-label-left').setAttribute('colspan', '2');
+                document.getElementById('footer-label-left').setAttribute('colspan', '3');
                 document.getElementById('footer-label-left').textContent = `মোট বিষয়: ${coursesList.length}টি`;
                 document.getElementById('footer-total-credits').classList.add('hidden');
                 document.getElementById('footer-label-right').textContent = 'মোট পয়েন্ট (বোনাসসহ):';
@@ -1432,6 +2095,7 @@ Each object MUST have these exact keys:
         }
 
         function renderEditableTable() {
+            updateHeroTier();
             tableRowBadge.textContent = coursesList.length;
             const isSchool = eduSystem === 'school';
             const gradeMap = getActiveGradeMap();
@@ -1439,16 +2103,23 @@ Each object MUST have these exact keys:
 
             if (coursesList.length === 0) {
                 coursesTableBody.innerHTML = `
-                    <tr>
-                        <td colspan="${isSchool ? 9 : 10}" class="py-10 text-center space-y-3">
-                            <p class="text-slate-400 text-xs">এখনো কোনো রেজাল্ট শিটের ছবি দেওয়া হয়নি। উপরে রেজাল্ট শিটের ছবি আপলোড করুন অথবা নিচের বাটনে ক্লিক করে সাবজেক্ট যোগ করুন।</p>
-                            <button type="button" class="dynamic-add-row-btn inline-flex items-center gap-1.5 bg-slate-900 hover:bg-indigo-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition cursor-pointer">
-                                <span>+ নতুন সাবজেক্ট যোগ করুন</span>
-                            </button>
+                    <tr class="empty-row">
+                        <td colspan="${isSchool ? 9 : 10}">
+                            <div class="empty">
+                                <svg class="art" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="12" y="6" width="40" height="52" rx="6"/><path d="M22 20h20M22 29h20M22 38h12"/></svg>
+                                <h3>এখনো কোনো কোর্স নেই</h3>
+                                <p>রেজাল্ট শিটের ছবি আপলোড করুন, অথবা নিজে সাবজেক্ট যোগ করুন।</p>
+                                <div class="empty-actions">
+                                    <button type="button" class="btn btn-primary dynamic-add-row-btn">সাবজেক্ট যোগ করুন</button>
+                                    <button type="button" class="btn btn-ghost empty-upload-btn">ছবি আপলোড করুন</button>
+                                </div>
+                            </div>
                         </td>
                     </tr>`;
                 const emptyAddBtn = coursesTableBody.querySelector('.dynamic-add-row-btn');
                 if (emptyAddBtn) emptyAddBtn.addEventListener('click', addNewSubjectRow);
+                const emptyUpBtn = coursesTableBody.querySelector('.empty-upload-btn');
+                if (emptyUpBtn) emptyUpBtn.addEventListener('click', () => resultFileInput.click());
                 document.getElementById('footer-total-credits').textContent = '0.00';
                 document.getElementById('footer-total-points').textContent = '0.00';
                 return;
@@ -1468,58 +2139,58 @@ Each object MUST have these exact keys:
                 );
 
                 const tr = document.createElement('tr');
-                tr.className = isExcludedByMode
-                    ? 'bg-slate-100/70 opacity-50 transition-opacity'
-                    : 'hover:bg-indigo-50/30 transition-colors';
+                tr.className = isExcludedByMode ? 'is-muted' : '';
 
                 const typeOrRoleHtml = isSchool
-                    ? `<select data-field="subjectRole" class="row-input bg-white border border-slate-200 focus:border-indigo-500 rounded-lg px-2 py-1 text-xs font-semibold ${course.subjectRole === 'Optional' ? 'text-amber-700 bg-amber-50' : 'text-indigo-700'} focus:outline-none cursor-pointer">
+                    ? `<select data-field="subjectRole" aria-label="বিষয়ের ধরন" class="row-input sel-role ${course.subjectRole === 'Optional' ? 'is-opt' : ''}">
                         <option value="Compulsory" ${course.subjectRole !== 'Optional' ? 'selected' : ''}>Compulsory</option>
                         <option value="Optional" ${course.subjectRole === 'Optional' ? 'selected' : ''}>4th Subject (Optional)</option>
                        </select>`
-                    : `<select data-field="courseType" class="row-input bg-white border border-slate-200 focus:border-indigo-500 rounded-lg px-2 py-1 text-xs font-semibold ${course.courseType === 'Sessional' ? 'text-emerald-700' : 'text-indigo-700'} focus:outline-none cursor-pointer">
+                    : `<select data-field="courseType" aria-label="কোর্সের ধরন" class="row-input sel-type ${course.courseType === 'Sessional' ? 'is-sess' : ''}">
                         <option value="Theoretical" ${course.courseType === 'Theoretical' ? 'selected' : ''}>Theoretical</option>
                         <option value="Sessional" ${course.courseType === 'Sessional' ? 'selected' : ''}>Sessional</option>
                        </select>`;
 
                 const isManualRow = course.sourceLabel === 'Manual';
-                const showCreditReq = isManualRow && !course.creditEdited;
-                const showGradeReq = isManualRow && !course.gradeEdited;
+                const showCreditReq = (isManualRow || course.creditGuessed) && !course.creditEdited;
+                const showGradeReq = (isManualRow || course.gradeGuessed) && !course.gradeEdited;
 
                 tr.innerHTML = `
-                    <td class="py-2.5 px-3 sm:px-4 font-mono text-xs font-bold text-slate-500">${idx + 1}</td>
-                    <td class="py-2.5 px-3 sm:px-4">
-                        <input type="text" placeholder="Optional" value="${escapeHtml(course.courseCode)}" data-field="courseCode" class="row-input w-24 bg-white border border-slate-200 focus:border-indigo-500 rounded-lg px-2 py-1 text-xs font-mono font-bold text-slate-800 placeholder:text-slate-300 placeholder:font-normal focus:outline-none">
+                    <td class="c-idx" data-label=""><span class="idx">${idx + 1}</span></td>
+                    <td class="c-code" data-label="কোর্স কোড">
+                        <input type="text" placeholder="কোড" aria-label="কোর্স কোড" value="${escapeHtml(course.courseCode)}" data-field="courseCode" class="row-input f-code">
                     </td>
-                    <td class="py-2.5 px-3 sm:px-4">
-                        <input type="text" placeholder="Optional (বিষয়ের নাম)" value="${escapeHtml(course.courseName)}" data-field="courseName" class="row-input w-full min-w-[180px] bg-white border border-slate-200 focus:border-indigo-500 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-800 placeholder:text-slate-300 placeholder:font-normal focus:outline-none">
+                    <td class="c-name" data-label="কোর্সের নাম">
+                        <input type="text" placeholder="কোর্সের নাম (ঐচ্ছিক)" aria-label="কোর্সের নাম" value="${escapeHtml(course.courseName)}" data-field="courseName" class="row-input f-name">
                     </td>
                     ${isSchool ? '' : `
-                    <td class="py-2.5 px-3 sm:px-4">
-                        <div class="inline-flex flex-col items-center gap-0.5">
-                            <input type="number" step="0.25" min="0" max="10" required title="ক্রেডিট সংখ্যা দিন" value="${course.credit.toFixed(2)}" data-field="credit" class="row-input w-20 bg-amber-50/80 border-2 border-amber-400 focus:border-indigo-600 rounded-lg px-2 py-1 text-xs font-mono font-extrabold text-center text-amber-950 focus:outline-none">
-                            ${showCreditReq ? '<span class="text-[9px] font-bold uppercase tracking-wider text-amber-700">Required</span>' : ''}
+                    <td class="c-credit" data-label="ক্রেডিট">
+                        <div class="field-stack">
+                            <input type="number" inputmode="decimal" step="0.25" min="0" max="10" required aria-label="ক্রেডিট" value="${course.credit.toFixed(2)}" data-field="credit" class="row-input f-num ${showCreditReq ? 'needs' : ''}">
+                            ${showCreditReq ? '<span class="req">যাচাই করুন</span>' : ''}
                         </div>
                     </td>`}
-                    <td class="py-2.5 px-3 sm:px-4">${typeOrRoleHtml}</td>
-                    <td class="py-2.5 px-3 sm:px-4">
-                        <select data-field="repeatStatus" class="row-input rounded-full px-2.5 py-0.5 text-[11px] font-bold focus:outline-none cursor-pointer ${course.repeatStatus === 'Repeat' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-emerald-600 text-white'}">
-                            <option value="Regular" ${course.repeatStatus !== 'Repeat' ? 'selected' : ''} class="bg-white text-slate-900">Regular</option>
-                            <option value="Repeat" ${course.repeatStatus === 'Repeat' ? 'selected' : ''} class="bg-white text-slate-900">Repeat</option>
+                    <td class="c-type" data-label="${isSchool ? 'বিষয়ের ধরন' : 'ধরন'}">${typeOrRoleHtml}</td>
+                    <td class="c-status" data-label="স্ট্যাটাস">
+                        <select data-field="repeatStatus" aria-label="স্ট্যাটাস" class="row-input sel-status ${course.repeatStatus === 'Repeat' ? 'is-repeat' : ''}">
+                            <option value="Regular" ${course.repeatStatus !== 'Repeat' ? 'selected' : ''}>Regular</option>
+                            <option value="Repeat" ${course.repeatStatus === 'Repeat' ? 'selected' : ''}>Repeat</option>
                         </select>
                     </td>
-                    <td class="py-2.5 px-3 sm:px-4">
-                        <div class="inline-flex flex-col items-center gap-0.5">
-                            <select required title="গ্রেড সিলেক্ট করুন" data-field="letterGrade" class="row-input bg-amber-50/80 border-2 border-amber-400 focus:border-indigo-600 rounded-lg px-2 py-1 text-xs font-mono font-extrabold ${course.letterGrade === 'F' ? 'text-rose-600' : 'text-amber-950'} focus:outline-none cursor-pointer">
+                    <td class="c-grade" data-label="গ্রেড">
+                        <div class="field-stack">
+                            <select required aria-label="গ্রেড" data-field="letterGrade" class="row-input sel-grade ${course.letterGrade === 'F' ? 'is-f' : ''} ${showGradeReq ? 'needs' : ''}">
                                 ${validGrades.map(g => `<option value="${g}" ${course.letterGrade === g ? 'selected' : ''}>${g}</option>`).join('')}
                             </select>
-                            ${showGradeReq ? '<span class="text-[9px] font-bold uppercase tracking-wider text-amber-700">Required</span>' : ''}
+                            ${showGradeReq ? '<span class="req">যাচাই করুন</span>' : ''}
                         </div>
                     </td>
-                    <td class="py-2.5 px-3 sm:px-4 font-mono text-xs font-bold text-slate-700">${gp.toFixed(2)}</td>
-                    <td class="py-2.5 px-3 sm:px-4 font-mono text-xs font-bold text-emerald-700">${isSchool && course.subjectRole === 'Optional' ? `+${points.toFixed(2)}` : points.toFixed(2)}</td>
-                    <td class="py-2.5 px-3 sm:px-4 text-right">
-                        <button type="button" class="delete-row-btn text-xs font-bold text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded-lg transition cursor-pointer" title="সারি মুছুন">✕</button>
+                    <td class="c-gp" data-label="GP">${gpBadge(gp, gradeMap)}</td>
+                    <td class="c-pts" data-label="${isSchool ? 'বোনাস / নেট' : 'পয়েন্ট'}">${isSchool && course.subjectRole === 'Optional' ? `+${points.toFixed(2)}` : points.toFixed(2)}</td>
+                    <td class="c-del" data-label="">
+                        <button type="button" class="icon-btn danger delete-row-btn" title="সারি মুছুন" aria-label="সারি ${idx + 1} মুছুন">
+                            <svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V4h6v3"/></svg>
+                        </button>
                     </td>
                 `;
 
@@ -1534,6 +2205,7 @@ Each object MUST have these exact keys:
                             coursesList[idx].gradeEdited = true;
                         } else {
                             coursesList[idx][field] = el.value;
+                            if (field === 'courseCode' || field === 'courseName') { saveSession(); return; }
                         }
                         recalculateAndRender();
                     };
@@ -1547,19 +2219,24 @@ Each object MUST have these exact keys:
                                 coursesList[idx].creditEdited = true;
                                 const reqTag = el.parentElement.querySelector('span');
                                 if (reqTag) reqTag.remove();
+                                el.classList.remove('needs');
                             } else if (field === 'letterGrade' && !coursesList[idx].gradeEdited) {
                                 coursesList[idx].gradeEdited = true;
                                 const reqTag = el.parentElement.querySelector('span');
                                 if (reqTag) reqTag.remove();
+                                el.classList.remove('needs');
                             }
                         });
                     }
                 });
 
                 tr.querySelector('.delete-row-btn').addEventListener('click', () => {
-                    coursesList.splice(idx, 1);
+                    const removed = coursesList.splice(idx, 1)[0];
                     recalculateAndRender();
-                    showToast('সাবজেক্টটি তালিকা থেকে সরানো হয়েছে।');
+                    showToast('সাবজেক্টটি সরানো হয়েছে।', {
+                        label: 'পূর্বাবস্থায়',
+                        onClick: () => { coursesList.splice(idx, 0, removed); recalculateAndRender(); }
+                    });
                 });
 
                 coursesTableBody.appendChild(tr);
@@ -1567,11 +2244,12 @@ Each object MUST have these exact keys:
 
             // Append "+ নতুন সাবজেক্ট যোগ করুন" button row right after the last subject row (above Total footer)
             const addRowTr = document.createElement('tr');
-            addRowTr.className = 'bg-slate-50/70 hover:bg-indigo-50/40 transition-colors';
+            addRowTr.className = 'addrow';
             addRowTr.innerHTML = `
-                <td colspan="${isSchool ? 9 : 10}" class="py-2.5 px-3 sm:px-4 text-center sm:text-left">
-                    <button type="button" class="dynamic-add-row-btn inline-flex items-center gap-1.5 bg-slate-900 hover:bg-indigo-600 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-xs transition cursor-pointer">
-                        <span>+ নতুন সাবজেক্ট যোগ করুন</span>
+                <td colspan="${isSchool ? 9 : 10}">
+                    <button type="button" class="btn btn-soft btn-sm dynamic-add-row-btn">
+                        <svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                        সাবজেক্ট যোগ করুন
                     </button>
                 </td>
             `;
@@ -1589,14 +2267,14 @@ Each object MUST have these exact keys:
 
         resultDropzone.addEventListener('dragover', e => {
             e.preventDefault();
-            resultDropzone.classList.add('border-indigo-600', 'bg-indigo-100/60');
+            resultDropzone.classList.add('is-over');
         });
         resultDropzone.addEventListener('dragleave', () => {
-            resultDropzone.classList.remove('border-indigo-600', 'bg-indigo-100/60');
+            resultDropzone.classList.remove('is-over');
         });
         resultDropzone.addEventListener('drop', e => {
             e.preventDefault();
-            resultDropzone.classList.remove('border-indigo-600', 'bg-indigo-100/60');
+            resultDropzone.classList.remove('is-over');
             if (e.dataTransfer.files.length > 0) {
                 processUploadedResultImages(e.dataTransfer.files);
             }
@@ -1658,10 +2336,8 @@ Each object MUST have these exact keys:
         document.querySelectorAll('.calc-mode-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 calcMode = btn.dataset.calcMode;
-                document.querySelectorAll('.calc-mode-btn').forEach(b => {
-                    b.className = 'calc-mode-btn px-2.5 py-1 rounded-lg text-xs font-bold text-slate-700 hover:bg-white transition cursor-pointer';
-                });
-                btn.className = 'calc-mode-btn active px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-600 text-white shadow-xs transition cursor-pointer';
+                document.querySelectorAll('.calc-mode-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
+                btn.classList.add('active'); btn.setAttribute('aria-pressed', 'true');
                 recalculateAndRender();
             });
         });
@@ -1694,12 +2370,18 @@ Each object MUST have these exact keys:
 
         // Clear All Courses & Images Button
         document.getElementById('clear-all-btn').addEventListener('click', () => {
+            if (coursesList.length === 0 && uploadedImages.length === 0) { showToast('মুছে ফেলার মতো কিছু নেই।'); return; }
+            const prevCourses = coursesList, prevImages = uploadedImages;
             coursesList = [];
             uploadedImages = [];
+            ocrResultCache.clear();
             ocrVerifyBanner.classList.add('hidden');
             renderUploadedThumbs();
             recalculateAndRender();
-            showToast('সব ডেটা মুছে ফেলা হয়েছে।');
+            showToast('সব ডেটা মুছে ফেলা হয়েছে।', {
+                label: 'পূর্বাবস্থায়',
+                onClick: () => { coursesList = prevCourses; uploadedImages = prevImages; renderUploadedThumbs(); recalculateAndRender(); }
+            });
         });
 
         // 1:1 Square (1080x1080, 2x Retina) High-Resolution Emerald & Golden Result Card Generator
@@ -1757,196 +2439,174 @@ Each object MUST have these exact keys:
             return lines;
         }
 
-        function generateAndDownloadSquareResultCard(studentName) {
+        let cardTheme = 'light';
+        try { cardTheme = localStorage.getItem('cgpa_card_theme') || 'light'; } catch (e) {}
+        async function generateAndDownloadSquareResultCard(studentName) {
             const isSchool = eduSystem === 'school';
-            const gpaNum = parseFloat(heroCgpaValue.textContent) || 0;
-            const failSubjects = coursesList.filter(c => c.letterGrade === 'F');
+            const valueText = heroCgpaValue.textContent;
+            const maxScale = Math.max(...Object.values(getActiveGradeMap()), 1);
+            const ratio = Math.max(0, Math.min(1, (parseFloat(valueText) || 0) / maxScale));
+            const failSubjects = coursesList.filter(c => c.letterGrade === 'F' && !(isSchool && c.subjectRole === 'Optional'));
             const hasFail = failSubjects.length > 0;
             const hasSessional = !isSchool && coursesList.some(c => c.courseType === 'Sessional');
 
-            const namePrefix = studentName ? `অভিনন্দন, ${studentName}!` : 'অভিনন্দন!';
-            let subWish = 'আপনার ফলাফল সফলভাবে সম্পন্ন হয়েছে।';
-            if (hasFail) {
-                subWish = 'হতাশ হবেন না — সামনে আরও ভালো করার সুযোগ রয়েছে!';
-            } else if ((!isSchool && gpaNum >= 3.75) || (isSchool && gpaNum >= 4.80)) {
-                subWish = 'অসাধারণ সাফল্য! আপনার কঠোর পরিশ্রমের দারুণ প্রতিফলন।';
-            } else if ((!isSchool && gpaNum >= 3.25) || (isSchool && gpaNum >= 4.00)) {
-                subWish = 'দারুণ ফলাফল, ভবিষ্যতের জন্য অনেক শুভকামনা!';
-            }
-            const fullGreeting = hasFail
-                ? (studentName ? `${studentName}, ${subWish}` : subWish)
-                : `${namePrefix} ${subWish}`;
+            try {
+                await Promise.all([
+                    document.fonts.load('700 120px Fraunces'),
+                    document.fonts.load('600 40px Fraunces'),
+                    document.fonts.load('600 24px "Hind Siliguri"'),
+                    document.fonts.load('700 24px "Hind Siliguri"')
+                ]);
+            } catch (e) {}
 
-            // Logical 1080x1080 Square Canvas rendered at 2x Retina (2160x2160 actual pixels)
-            const size = 1080;
-            const scale = 2;
+            const SERIF = '"Fraunces", Georgia, "Times New Roman", serif';
+            const SANS = '"Hind Siliguri", "Noto Sans Bengali", system-ui, sans-serif';
+            const THEMES = {
+                light:   { bg: '#F4F7F5', g1: 'rgba(11, 107, 84, 0.12)', g2: 'rgba(232, 187, 78, 0.18)', ledger: 'rgba(14, 30, 25, 0.04)', frame: 'rgba(11, 107, 84, 0.38)', text: '#0E1E19', muted: 'rgba(14, 30, 25, 0.6)', foot: 'rgba(14, 30, 25, 0.45)', accent: '#0B6B54', markBg: '#0B6B54', markFg: '#FFFFFF', track: 'rgba(14, 30, 25, 0.1)', divider: 'rgba(14, 30, 25, 0.2)', vline: 'rgba(14, 30, 25, 0.12)', chip: 'rgba(11, 107, 84, 0.5)', fail: '#B3261E' },
+                navy:    { bg: '#0E1A33', g1: 'rgba(90, 150, 255, 0.26)', g2: 'rgba(255, 200, 90, 0.10)', ledger: 'rgba(255, 255, 255, 0.035)', frame: 'rgba(140, 180, 255, 0.45)', text: '#FFFFFF', muted: 'rgba(220, 232, 255, 0.68)', foot: 'rgba(220, 232, 255, 0.5)', accent: '#7FB2FF', markBg: '#7FB2FF', markFg: '#0E1A33', track: 'rgba(255, 255, 255, 0.14)', divider: 'rgba(255, 255, 255, 0.22)', vline: 'rgba(255, 255, 255, 0.14)', chip: 'rgba(127, 178, 255, 0.55)', fail: '#FF8F86' },
+                emerald: { bg: '#082A22', g1: 'rgba(61, 200, 160, 0.24)', g2: 'rgba(232, 187, 78, 0.13)', ledger: 'rgba(255, 255, 255, 0.035)', frame: 'rgba(232, 187, 78, 0.55)', text: '#FFFFFF', muted: 'rgba(226, 238, 232, 0.66)', foot: 'rgba(226, 238, 232, 0.5)', accent: '#E8BB4E', markBg: '#E8BB4E', markFg: '#082A22', track: 'rgba(255, 255, 255, 0.14)', divider: 'rgba(232, 187, 78, 0.28)', vline: 'rgba(255, 255, 255, 0.14)', chip: 'rgba(232, 187, 78, 0.55)', fail: '#FF8F86' }
+            };
+            const T = THEMES[cardTheme] || THEMES.light;
+            const GOLD = T.accent, INK = T.markFg, MUTED = T.muted;
+            const size = 1080, scale = 2;
             const canvas = document.createElement('canvas');
             canvas.width = size * scale;
             canvas.height = size * scale;
             const ctx = canvas.getContext('2d');
             ctx.scale(scale, scale);
+            ctx.textBaseline = 'alphabetic';
 
-            // Rich Emerald Green Radial + Linear Background
-            const bgGrad = ctx.createLinearGradient(0, 0, size, size);
-            bgGrad.addColorStop(0, '#022c22');
-            bgGrad.addColorStop(0.5, '#064e3b');
-            bgGrad.addColorStop(1, '#022c22');
-            ctx.fillStyle = bgGrad;
+            const fit = (text, weight, px, family, maxW) => {
+                let f = px;
+                ctx.font = `${weight} ${f}px ${family}`;
+                while (ctx.measureText(text).width > maxW && f > 18) { f -= 2; ctx.font = `${weight} ${f}px ${family}`; }
+                return f;
+            };
+
+            // Background: deep green, faint ledger lines, two soft lights
+            ctx.fillStyle = T.bg;
             ctx.fillRect(0, 0, size, size);
+            let g = ctx.createRadialGradient(920, 100, 20, 920, 100, 640);
+            g.addColorStop(0, T.g1); g.addColorStop(1, 'rgba(128, 128, 128, 0)');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
+            g = ctx.createRadialGradient(100, 1020, 20, 100, 1020, 520);
+            g.addColorStop(0, T.g2); g.addColorStop(1, 'rgba(128, 128, 128, 0)');
+            ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
+            ctx.strokeStyle = T.ledger;
+            ctx.lineWidth = 1;
+            for (let y = 36; y < size; y += 36) { ctx.beginPath(); ctx.moveTo(0, y + 0.5); ctx.lineTo(size, y + 0.5); ctx.stroke(); }
 
-            // Ambient Golden Glows
-            const glow1 = ctx.createRadialGradient(540, 440, 40, 540, 440, 460);
-            glow1.addColorStop(0, 'rgba(245, 158, 11, 0.22)');
-            glow1.addColorStop(1, 'rgba(245, 158, 11, 0)');
-            ctx.fillStyle = glow1;
-            ctx.fillRect(0, 0, size, size);
-
-            // Double Luxury Golden Ornamental Frame
-            ctx.strokeStyle = 'rgba(251, 191, 36, 0.55)';
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.roundRect(36, 36, size - 72, size - 72, 36);
-            ctx.stroke();
-
-            ctx.strokeStyle = 'rgba(251, 191, 36, 0.22)';
-            ctx.lineWidth = 1.5;
-            ctx.beginPath();
-            ctx.roundRect(52, 52, size - 104, size - 104, 26);
-            ctx.stroke();
-
-            // Top Scale Pill Badge
-            const pillText = isSchool ? 'SSC / HSC RESULT • 5.00 SCALE' : 'ACADEMIC RESULT • 4.00 SCALE';
-            ctx.font = 'bold 20px "Inter", monospace';
-            const pillW = ctx.measureText(pillText).width + 56;
-            const pillX = (size - pillW) / 2;
-            ctx.fillStyle = 'rgba(251, 191, 36, 0.14)';
-            ctx.beginPath();
-            ctx.roundRect(pillX, 88, pillW, 46, 23);
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(251, 191, 36, 0.45)';
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-
-            ctx.fillStyle = '#fcd34d';
-            ctx.textAlign = 'center';
-            ctx.fillText(pillText, size / 2, 118);
-
-            // Personalized Greeting Message (Wrapped nicely in center)
-            ctx.fillStyle = '#fef3c7';
-            ctx.font = 'bold 34px "Hind Siliguri", "Inter", sans-serif';
-            const greetingLines = wrapCanvasLines(ctx, fullGreeting, size - 180);
-            let textY = 200;
-            greetingLines.slice(0, 2).forEach(line => {
-                ctx.fillText(line, size / 2, textY);
-                textY += 46;
-            });
-
-            // Centerpiece Golden GPA / CGPA Medallion Card
-            const medW = 460;
-            const medH = 260;
-            const medX = (size - medW) / 2;
-            const medY = 310;
-
-            ctx.save();
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
-            ctx.shadowBlur = 32;
-            ctx.shadowOffsetY = 14;
-            const goldGrad = ctx.createLinearGradient(medX, medY, medX + medW, medY + medH);
-            goldGrad.addColorStop(0, '#fbbf24');
-            goldGrad.addColorStop(0.5, '#f59e0b');
-            goldGrad.addColorStop(1, '#d97706');
-            ctx.fillStyle = goldGrad;
-            ctx.beginPath();
-            ctx.roundRect(medX, medY, medW, medH, 40);
-            ctx.fill();
-            ctx.restore();
-
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+            // Single gold frame
+            ctx.strokeStyle = T.frame;
             ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.roundRect(medX + 8, medY + 8, medW - 16, medH - 16, 33);
-            ctx.stroke();
+            ctx.beginPath(); ctx.roundRect(40, 40, size - 80, size - 80, 28); ctx.stroke();
 
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
-            ctx.font = 'bold 22px "Hind Siliguri", "Inter", sans-serif';
-            ctx.fillText(isSchool ? 'অর্জিত বোর্ড GPA' : 'অর্জিত CGPA / GPA', size / 2, medY + 54);
+            // Header: mark + wordmark, scale chip
+            ctx.fillStyle = T.markBg;
+            ctx.beginPath(); ctx.roundRect(96, 84, 56, 56, 16); ctx.fill();
+            ctx.save();
+            ctx.translate(96 + 10, 84 + 10); ctx.scale(1.5, 1.5);
+            ctx.strokeStyle = INK; ctx.lineWidth = 1.7; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            ctx.stroke(new Path2D('M2 9l10-5 10 5-10 5L2 9z M6 11.5V16c0 1.5 2.7 3 6 3s6-1.5 6-3v-4.5 M22 9v5'));
+            ctx.restore();
+            ctx.textAlign = 'left';
+            ctx.fillStyle = T.text;
+            ctx.font = `700 30px ${SANS}`;
+            ctx.fillText('CGPA / GPA Calculator', 172, 122);
 
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '900 132px monospace';
-            ctx.fillText(heroCgpaValue.textContent, size / 2, medY + 185);
+            const chipText = isSchool ? 'SSC/HSC, ৫.০০ স্কেল' : 'বিশ্ববিদ্যালয়, ৪.০০ স্কেল';
+            ctx.font = `600 22px ${SANS}`;
+            const chipW = ctx.measureText(chipText).width + 44;
+            ctx.strokeStyle = T.chip; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.roundRect(984 - chipW, 88, chipW, 48, 24); ctx.stroke();
+            ctx.fillStyle = GOLD; ctx.textAlign = 'center';
+            ctx.fillText(chipText, 984 - chipW / 2, 120);
 
-            ctx.fillStyle = 'rgba(254, 243, 199, 0.95)';
-            ctx.font = 'bold 20px "Hind Siliguri", "Inter", sans-serif';
-            ctx.fillText(isSchool ? '৫.০০ স্কেলে (Out of 5.00)' : '৪.০০ স্কেলে (Out of 4.00)', size / 2, medY + 232);
+            // Title block
+            ctx.textAlign = 'left';
+            if (studentName) {
+                ctx.fillStyle = MUTED; ctx.font = `600 22px ${SANS}`;
+                ctx.fillText('শিক্ষার্থী', 96, 236);
+                ctx.fillStyle = T.text;
+                fit(studentName, 700, 58, SANS, 888);
+                ctx.fillText(studentName, 96, 298);
+            } else {
+                ctx.fillStyle = T.text; ctx.font = `700 50px ${SANS}`;
+                ctx.fillText('একাডেমিক রেজাল্ট', 96, 290);
+            }
+            ctx.fillStyle = MUTED; ctx.font = `500 24px ${SANS}`;
+            ctx.fillText(cgpaModeBadge.textContent, 96, 342);
+            if (hasFail) {
+                ctx.fillStyle = T.fail;
+                ctx.beginPath(); ctx.arc(104, 380, 6, 0, Math.PI * 2); ctx.fill();
+                ctx.font = `600 22px ${SANS}`;
+                ctx.fillText(`${failSubjects.length}টি বিষয়ে F গ্রেড আছে`, 122, 388);
+            }
 
-            // Bottom Breakdown Metric Cards (2x2 Grid for perfect 1:1 balance)
+            // The figure
+            let numPx = 300;
+            const suffix = '/ ' + maxScale.toFixed(2);
+            let numW = 0, sufW = 0;
+            for (; numPx > 160; numPx -= 10) {
+                ctx.font = `700 ${numPx}px ${SERIF}`; numW = ctx.measureText(valueText).width;
+                ctx.font = `600 72px ${SERIF}`; sufW = ctx.measureText(suffix).width;
+                if (88 + numW + 24 + sufW <= 984) break;
+            }
+            ctx.fillStyle = T.text; ctx.font = `700 ${numPx}px ${SERIF}`;
+            ctx.fillText(valueText, 88, 660);
+            ctx.fillStyle = GOLD; ctx.font = `600 72px ${SERIF}`;
+            ctx.fillText(suffix, 88 + numW + 24, 660);
+
+            // Scale meter
+            ctx.fillStyle = T.track;
+            ctx.beginPath(); ctx.roundRect(96, 706, 888, 12, 6); ctx.fill();
+            if (ratio > 0) {
+                ctx.fillStyle = hasFail ? T.fail : GOLD;
+                ctx.beginPath(); ctx.roundRect(96, 706, Math.max(12, 888 * ratio), 12, 6); ctx.fill();
+            }
+            ctx.fillStyle = MUTED; ctx.font = `600 20px ${SANS}`;
+            ctx.textAlign = 'left'; ctx.fillText('0', 96, 752);
+            ctx.textAlign = 'right'; ctx.fillText(maxScale.toFixed(2), 984, 752);
+
+            // Divider + four figures (no boxes, just hairlines)
+            ctx.strokeStyle = T.divider; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(96, 800); ctx.lineTo(984, 800); ctx.stroke();
+
             const metrics = isSchool ? [
-                { label: 'মোট বিষয় (Subjects)', val: statTotalCredits.textContent },
-                { label: 'মোট অর্জিত পয়েন্ট', val: statTotalPoints.textContent },
-                { label: '৪র্থ বিষয় ছাড়া GPA', val: statTheoryGpa.textContent },
-                { label: '৪র্থ বিষয় বোনাস', val: statSessionalGpa.textContent }
+                ['মোট বিষয়', statTotalCredits.textContent],
+                ['মোট পয়েন্ট', statTotalPoints.textContent],
+                ['৪র্থ বিষয় ছাড়া', statTheoryGpa.textContent],
+                ['৪র্থ বিষয়', statSessionalGpa.textContent]
             ] : [
-                { label: 'মোট ক্রেডিট (Total Credit)', val: statTotalCredits.textContent },
-                { label: 'মোট পয়েন্ট (Total Points)', val: statTotalPoints.textContent },
-                { label: 'Theoretical CGPA', val: statTheoryGpa.textContent },
-                hasSessional
-                    ? { label: 'Sessional CGPA', val: statSessionalGpa.textContent }
-                    : { label: 'মোট কোর্স (Courses)', val: `${coursesList.length} টি` }
+                ['মোট ক্রেডিট', statTotalCredits.textContent],
+                ['মোট পয়েন্ট', statTotalPoints.textContent],
+                ['Theoretical GPA', statTheoryGpa.textContent],
+                hasSessional ? ['Sessional GPA', statSessionalGpa.textContent] : ['মোট কোর্স', `${coursesList.length}টি`]
             ];
-
-            const gridX = 96;
-            const gridY = 620;
-            const gap = 24;
-            const cardW = (size - gridX * 2 - gap) / 2;
-            const cardH = 132;
-
-            metrics.forEach((m, idx) => {
-                const col = idx % 2;
-                const row = Math.floor(idx / 2);
-                const bx = gridX + col * (cardW + gap);
-                const by = gridY + row * (cardH + gap);
-
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-                ctx.beginPath();
-                ctx.roundRect(bx, by, cardW, cardH, 24);
-                ctx.fill();
-
-                ctx.strokeStyle = 'rgba(251, 191, 36, 0.30)';
-                ctx.lineWidth = 1.5;
-                ctx.stroke();
-
+            const colW = 222;
+            metrics.forEach(([label, val], i) => {
+                const x = 96 + i * colW;
+                const tx = i === 0 ? x : x + 26;
+                if (i > 0) {
+                    ctx.strokeStyle = T.vline; ctx.lineWidth = 1.5;
+                    ctx.beginPath(); ctx.moveTo(x, 830); ctx.lineTo(x, 944); ctx.stroke();
+                }
                 ctx.textAlign = 'left';
-                ctx.fillStyle = '#a7f3d0';
-                ctx.font = '600 21px "Hind Siliguri", "Inter", sans-serif';
-                ctx.fillText(m.label, bx + 28, by + 48);
-
-                ctx.fillStyle = '#fbbf24';
-                ctx.font = 'bold 38px monospace';
-                ctx.fillText(m.val, bx + 28, by + 102);
+                ctx.fillStyle = MUTED; ctx.font = `600 21px ${SANS}`;
+                ctx.fillText(label, tx, 856);
+                ctx.fillStyle = T.text;
+                fit(val, 600, 52, SERIF, colW - 34);
+                ctx.fillText(val, tx, 922);
             });
 
-            // Optional Failed Subjects Alert Strip at Bottom
-            if (hasFail) {
-                const failY = 924;
-                ctx.fillStyle = 'rgba(244, 63, 94, 0.24)';
-                ctx.beginPath();
-                ctx.roundRect(96, failY, size - 192, 54, 16);
-                ctx.fill();
-
-                ctx.strokeStyle = 'rgba(251, 113, 133, 0.45)';
-                ctx.lineWidth = 1.5;
-                ctx.stroke();
-
-                ctx.textAlign = 'center';
-                ctx.fillStyle = '#fecdd3';
-                ctx.font = 'bold 22px "Hind Siliguri", "Inter", sans-serif';
-                ctx.fillText(`⚠ অকৃতকার্য (Failed): ${failSubjects.length}টি বিষয়ে F গ্রেড রয়েছে`, size / 2, failY + 35);
-            } else {
-                ctx.textAlign = 'center';
-                ctx.fillStyle = 'rgba(167, 243, 208, 0.65)';
-                ctx.font = '600 20px "Hind Siliguri", "Inter", sans-serif';
-                ctx.fillText('Smart AI & OCR CGPA Calculator • Verified Scorecard', size / 2, 965);
-            }
+            // Footer
+            ctx.fillStyle = T.foot; ctx.font = `600 20px ${SANS}`;
+            ctx.textAlign = 'left';
+            ctx.fillText('Smart AI & OCR CGPA Calculator', 96, 1000);
+            ctx.textAlign = 'right';
+            let dateText = '';
+            try { dateText = new Date().toLocaleDateString('bn-BD', { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) {}
+            ctx.fillText(dateText, 984, 1000);
 
             canvas.toBlob(blob => {
                 if (!blob) return;
@@ -1954,12 +2614,12 @@ Each object MUST have these exact keys:
                 const a = document.createElement('a');
                 const safeNamePart = studentName ? `${studentName.replace(/[^a-zA-Z0-9\u0980-\u09FF_-]/g, '_')}_` : '';
                 a.href = url;
-                a.download = `${safeNamePart}Result_Card_1080x1080_${heroCgpaValue.textContent}.png`;
+                a.download = `${safeNamePart}Result_Card_1080x1080_${valueText}.png`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                showToast('১:১ স্কয়ার (1080×1080) রেজাল্ট কার্ড ডাউনলোড হয়েছে!');
+                showToast('১:১ স্কয়ার (1080×1080) রেজাল্ট কার্ড ডাউনলোড হয়েছে!');
             }, 'image/png');
         }
 
@@ -2046,6 +2706,38 @@ Each object MUST have these exact keys:
             showToast('CSV ফাইল ডাউনলোড হয়েছে!');
         });
 
+        // ================= VISUAL HELPERS =================
+        function updateHeroTier() {
+            const el = document.getElementById('hero-card');
+            if (!el) return;
+            const v = parseFloat(heroCgpaValue.textContent) || 0;
+            const max = Math.max(...Object.values(getActiveGradeMap()), 1);
+            const r = v / max;
+            el.dataset.tier = coursesList.length === 0 ? '' : (r >= 0.9 ? 'top' : r >= 0.75 ? 'good' : r >= 0.5 ? 'mid' : 'low');
+            const fill = document.getElementById('hero-meter-fill');
+            if (fill) fill.style.width = (coursesList.length === 0 ? 0 : Math.min(100, r * 100)) + '%';
+            const mx = document.getElementById('hero-meter-max');
+            if (mx) mx.textContent = max.toFixed(2);
+        }
+        function gpBadge(gp, map) {
+            const r = gp / Math.max(...Object.values(map), 1);
+            const c = gp === 0 ? 'gp-f' : r >= 0.9 ? 'gp-top' : r >= 0.7 ? 'gp-good' : r >= 0.45 ? 'gp-mid' : 'gp-low';
+            return `<span class="gp ${c}">${gp.toFixed(2)}</span>`;
+        }
+
+        // ================= SESSION AUTO-SAVE =================
+        function saveSession() {
+            try { localStorage.setItem('cgpa_session_v1', JSON.stringify({ system: eduSystem, courses: coursesList })); } catch (e) {}
+        }
+        (function restoreSession() {
+            let saved = null;
+            try { saved = JSON.parse(localStorage.getItem('cgpa_session_v1') || 'null'); } catch (e) {}
+            if (!saved || !Array.isArray(saved.courses) || saved.courses.length === 0) return;
+            if (saved.system === 'school') document.querySelector('[data-edu-system="school"]').click();
+            coursesList = saved.courses;
+            recalculateAndRender();
+        })();
+
         // ================= UTILITIES =================
         function copyTextSafe(text) {
             const ta = document.createElement('textarea');
@@ -2067,13 +2759,258 @@ Each object MUST have these exact keys:
         }
 
         let toastTimer;
-        function showToast(msg) {
+        function showToast(msg, action) {
             const toast = document.getElementById('toast');
+            const btn = document.getElementById('toast-action');
             document.getElementById('toast-message').textContent = msg;
-            toast.classList.remove('translate-y-20', 'opacity-0');
+            if (action && action.label) {
+                btn.textContent = action.label;
+                btn.classList.remove('hidden');
+                btn.onclick = () => { toast.classList.remove('show'); action.onClick(); };
+            } else {
+                btn.classList.add('hidden');
+                btn.onclick = null;
+            }
+            toast.classList.add('show');
             clearTimeout(toastTimer);
-            toastTimer = setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+            toastTimer = setTimeout(() => toast.classList.remove('show'), action ? 6000 : 3200);
         }
+
+        // ================= UX ENHANCEMENTS =================
+        (function enhanceUx() {
+            // Initial empty state uses the same template as later renders
+            if (coursesList.length === 0) renderEditableTable();
+
+            const addBtn = document.getElementById('header-add-row-btn');
+            if (addBtn) addBtn.addEventListener('click', addNewSubjectRow);
+
+            // Hero value: bump animation + mobile dock mirror
+            const hero = document.getElementById('hero-cgpa-value');
+            const dock = document.getElementById('dock');
+            const dockCgpa = document.getElementById('dock-cgpa');
+            const dockLabel = document.getElementById('dock-label');
+            const dockBtn = document.getElementById('dock-action');
+            let heroOut = false;
+            function syncDock() {
+                dockCgpa.textContent = hero.textContent;
+                dockLabel.textContent = eduSystem === 'school' ? 'আপনার GPA' : 'আপনার CGPA';
+                const show = heroOut && coursesList.length > 0;
+                dock.classList.toggle('show', show);
+                dock.setAttribute('aria-hidden', show ? 'false' : 'true');
+                dockBtn.tabIndex = show ? 0 : -1;
+                document.body.classList.toggle('has-dock', show);
+            }
+            new MutationObserver(() => {
+                hero.classList.remove('bump'); void hero.offsetWidth; hero.classList.add('bump');
+                syncDock();
+            }).observe(hero, { childList: true, characterData: true, subtree: true });
+            if ('IntersectionObserver' in window) {
+                new IntersectionObserver(entries => { heroOut = !entries[0].isIntersecting; syncDock(); }, { threshold: 0.05 })
+                    .observe(document.getElementById('hero-card'));
+            }
+            dockBtn.addEventListener('click', () => document.getElementById('download-png-btn').click());
+            syncDock();
+
+            // Modals: Esc to close, scroll lock, focus handling, Tab trap
+            const modals = ['ai-settings-modal', 'grade-scale-modal', 'image-lightbox-modal', 'card-name-modal']
+                .map(id => document.getElementById(id));
+            let lastFocus = null;
+            modals.forEach(m => {
+                new MutationObserver(() => {
+                    const open = !m.classList.contains('hidden');
+                    if (open) {
+                        lastFocus = document.activeElement;
+                        setTimeout(() => { if (!m.contains(document.activeElement)) m.querySelector('.sheet').focus(); }, 80);
+                    } else if (lastFocus && lastFocus.focus) {
+                        lastFocus.focus(); lastFocus = null;
+                    }
+                    document.documentElement.classList.toggle('modal-open', modals.some(x => !x.classList.contains('hidden')));
+                }).observe(m, { attributes: true, attributeFilter: ['class'] });
+            });
+            document.addEventListener('keydown', e => {
+                const open = modals.find(m => !m.classList.contains('hidden'));
+                if (!open) return;
+                if (e.key === 'Escape') { open.classList.add('hidden'); return; }
+                if (e.key === 'Tab') {
+                    const f = Array.from(open.querySelectorAll('button, input, select, a[href], [tabindex]:not([tabindex="-1"])')).filter(x => !x.disabled && x.offsetParent !== null);
+                    if (!f.length) return;
+                    const first = f[0], last = f[f.length - 1];
+                    if (e.shiftKey && (document.activeElement === first || document.activeElement === open.querySelector('.sheet'))) { e.preventDefault(); last.focus(); }
+                    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+                }
+            });
+        })();
+
+        // ================= OFFICIAL CGPA CROSS-CHECK =================
+        (function officialCheck() {
+            const box = document.getElementById('official-check');
+            const res = document.getElementById('official-result');
+            const inp = document.getElementById('official-gpa-input');
+
+            function render(nodes) {
+                res.textContent = '';
+                nodes.forEach(n => res.appendChild(n));
+            }
+            function el(tag, cls, text) {
+                const e = document.createElement(tag);
+                if (cls) e.className = cls;
+                if (text) e.textContent = text;
+                return e;
+            }
+
+            window.updateOfficialCheck = function () {
+                const show = eduSystem !== 'school' && coursesList.length > 0;
+                box.classList.toggle('hidden', !show);
+                if (!show) return;
+                const target = parseFloat(inp.value);
+                if (!(target > 0)) { render([]); return; }
+
+                const map = getActiveGradeMap();
+                const excludeF = excludeFChk.checked;
+                const rows = coursesList.map(c => {
+                    const gp = map[c.letterGrade] ?? 0;
+                    return { c, gp, counted: !(excludeF && gp === 0) };
+                });
+                const D = rows.reduce((t, r) => t + (r.counted ? r.c.credit : 0), 0);
+                if (D <= 0) { render([]); return; }
+                const P = rows.reduce((t, r) => t + (r.counted ? r.c.credit * r.gp : 0), 0);
+                const matches = v => Math.abs(Math.round(v * 100) / 100 - target) < 0.0051 ||
+                                     Math.abs(Math.floor(v * 100 + 1e-9) / 100 - target) < 0.0051;
+                const cur = P / D;
+                if (matches(cur)) {
+                    render([el('span', 'ok', `মিলেছে: আপনার হিসাব ${cur.toFixed(2)}`)]);
+                    return;
+                }
+
+                // Look for the smallest set of sign changes (B -> B+ / B-) that reproduces the official value
+                const opts = [];
+                rows.forEach((r, i) => {
+                    if (!r.counted) return;
+                    const base = r.c.letterGrade[0];
+                    Object.keys(map).filter(g => g[0] === base && g !== r.c.letterGrade && map[g] > 0).forEach(g => {
+                        opts.push({ i, g, d: r.c.credit * (map[g] - r.gp) });
+                    });
+                });
+                const found = [];
+                const consider = combo => {
+                    const sum = combo.reduce((t, o) => t + o.d, 0);
+                    if (matches((P + sum) / D)) found.push(combo);
+                };
+                for (let k = 1; k <= 3 && found.length === 0; k++) {
+                    const walk = (start, picked, usedRows) => {
+                        if (found.length >= 40) return;
+                        if (picked.length === k) { consider(picked); return; }
+                        for (let x = start; x < opts.length; x++) {
+                            if (usedRows.has(opts[x].i)) continue;
+                            usedRows.add(opts[x].i);
+                            walk(x + 1, [...picked, opts[x]], usedRows);
+                            usedRows.delete(opts[x].i);
+                        }
+                    };
+                    walk(0, [], new Set());
+                }
+                const flagged = o => (coursesList[o.i].gradeGuessed && !coursesList[o.i].gradeEdited) ? 1 : 0;
+                found.sort((a, b) => b.reduce((t, o) => t + flagged(o), 0) - a.reduce((t, o) => t + flagged(o), 0));
+
+                const out = [el('span', 'warn', `মিলছে না: হিসাব ${cur.toFixed(2)}, আপনার দেওয়া ${target.toFixed(2)}।`)];
+                if (found.length === 0) {
+                    out.push(el('span', '', ' ছোট কোনো গ্রেড সংশোধনে মেলানো গেল না। ক্রেডিট বা বাদ পড়া কোর্স দেখুন।'));
+                } else {
+                    out.push(el('span', '', ' এর মধ্যে যেকোনো একটি সংশোধনে মিলতে পারে, ছবির সাথে দেখে নিন:'));
+                    const list = el('div', 'suggest-list');
+                    found.slice(0, 3).forEach(combo => {
+                        const label = combo.map(o => {
+                            const c = coursesList[o.i];
+                            return `${c.courseCode || c.courseName || ('সারি ' + (o.i + 1))}: ${c.letterGrade} → ${o.g}`;
+                        }).join(' এবং ');
+                        const b = el('button', 'btn btn-soft btn-sm', label);
+                        b.type = 'button';
+                        b.addEventListener('click', () => {
+                            combo.forEach(o => { coursesList[o.i].letterGrade = o.g; coursesList[o.i].gradeEdited = true; });
+                            recalculateAndRender();
+                            showToast('সংশোধন প্রয়োগ হয়েছে।');
+                        });
+                        list.appendChild(b);
+                    });
+                    out.push(list);
+                }
+                render(out);
+            };
+
+            const _recalc = recalculateAndRender;
+            recalculateAndRender = function () {
+                _recalc.apply(this, arguments);
+                window.updateOfficialCheck();
+            };
+            inp.addEventListener('input', window.updateOfficialCheck);
+            window.updateOfficialCheck();
+
+            // Banner: open the first uploaded sheet for side-by-side checking
+            const openBtn = document.getElementById('verify-open-image');
+            const banner = document.getElementById('ocr-verify-banner');
+            new MutationObserver(() => {
+                openBtn.classList.toggle('hidden', uploadedImages.length === 0);
+            }).observe(banner, { attributes: true, attributeFilter: ['class'] });
+            openBtn.addEventListener('click', () => {
+                const item = uploadedImages[0];
+                if (!item) return;
+                lightboxTitle.textContent = item.name;
+                lightboxImg.src = item.dataUrl;
+                imageLightboxModal.classList.remove('hidden');
+            });
+        })();
+
+        // ================= DUPLICATE ROW GUARD =================
+        (function duplicateGuard() {
+            const notice = document.getElementById('dup-notice');
+            const text = document.getElementById('dup-text');
+            const key = c => [c.courseCode, c.courseName, c.credit, c.letterGrade, c.courseType, c.repeatStatus]
+                .map(v => String(v).trim().toLowerCase()).join('|');
+            function dupIndexes() {
+                const seen = new Set(), dups = [];
+                coursesList.forEach((c, i) => {
+                    if (!String(c.courseCode).trim() && !String(c.courseName).trim()) return;
+                    if (c.sourceLabel === 'Manual') return;
+                    const k = key(c);
+                    if (seen.has(k)) dups.push(i); else seen.add(k);
+                });
+                return dups;
+            }
+            window.updateDupNotice = function () {
+                const d = dupIndexes();
+                notice.classList.toggle('hidden', d.length === 0);
+                if (d.length) text.textContent = `${d.length}টি সারি আগের সারির হুবহু কপি মনে হচ্ছে। একই ছবি দুবার যোগ হলে ক্রেডিট দ্বিগুণ হয়ে যায়।`;
+            };
+            document.getElementById('dup-remove-btn').addEventListener('click', () => {
+                const d = new Set(dupIndexes());
+                if (!d.size) return;
+                const before = coursesList;
+                coursesList = coursesList.filter((_, i) => !d.has(i));
+                recalculateAndRender();
+                showToast(`${d.size}টি ডুপ্লিকেট সারি সরানো হয়েছে।`, {
+                    label: 'পূর্বাবস্থায়',
+                    onClick: () => { coursesList = before; recalculateAndRender(); }
+                });
+            });
+            const _r = recalculateAndRender;
+            recalculateAndRender = function () { _r.apply(this, arguments); window.updateDupNotice(); };
+            window.updateDupNotice();
+        })();
+
+        (function cardThemePicker() {
+            const wrap = document.getElementById('card-theme-picker');
+            const sync = () => wrap.querySelectorAll('.theme-opt').forEach(b => {
+                const on = b.dataset.theme === cardTheme;
+                b.classList.toggle('active', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+            wrap.addEventListener('click', e => {
+                const b = e.target.closest('.theme-opt'); if (!b) return;
+                cardTheme = b.dataset.theme;
+                try { localStorage.setItem('cgpa_card_theme', cardTheme); } catch (err) {}
+                sync();
+            });
+            sync();
+        })();
     </script>
 </body>
 </html>
