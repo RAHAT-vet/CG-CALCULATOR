@@ -206,10 +206,25 @@
 
         .thumbs-label { font-size: 13px; font-weight: 600; color: var(--muted); display: block; margin-bottom: 6px; }
         #uploaded-thumbs-list { display: flex; flex-wrap: wrap; gap: 8px; }
-        .thumb { display: flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface-2); transition: border-color .15s; }
-        .thumb:hover { border-color: var(--brand); }
-        .thumb img { width: 36px; height: 36px; object-fit: cover; border-radius: 8px; }
-        .thumb span { font-size: 13px; font-weight: 500; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .thumb { display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); max-width: 100%; }
+        .thumb-main { display: flex; align-items: center; gap: 9px; border: 0; background: none; padding: 0; text-align: left; min-width: 0; border-radius: 9px; }
+        .thumb img { width: 40px; height: 40px; object-fit: cover; border-radius: 8px; flex: none; }
+        .thumb-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+        .thumb-name { font-size: 13px; font-weight: 600; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .thumb-meta { font-size: 12px; color: var(--muted); }
+        .thumb-meta.ok { color: var(--brand); font-weight: 600; }
+        .thumb-meta.warn { color: var(--gold); font-weight: 600; }
+        .rescan-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; }
+        .rescan-row label { font-size: 13px; font-weight: 600; color: var(--muted); }
+        .select.select-sm { width: auto; min-height: 36px; font-size: 13.5px; padding: 4px 32px 4px 11px; }
+        .rescan-hint { font-size: 12.5px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+        .cmp-list { display: grid; gap: 10px; }
+        .cmp-item { border: 1px solid var(--line); border-radius: 13px; padding: 10px 12px; display: grid; gap: 8px; background: var(--surface-2); }
+        .cmp-item b { font-size: 14px; }
+        .cmp-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .cmp-pick button { border: 1.5px solid var(--line); background: var(--surface); border-radius: 10px; padding: 8px 10px; text-align: left; font-size: 13.5px; line-height: 1.35; }
+        .cmp-pick button small { display: block; color: var(--muted); font-size: 12px; }
+        .cmp-pick button.active { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); font-weight: 700; }
         .upload-foot { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line-2); display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; }
 
         /* ================= RESULT ================= */
@@ -541,6 +556,11 @@
                 <div id="uploaded-thumbs-wrap" class="hidden">
                     <span class="thumbs-label">আপলোড করা ছবি</span>
                     <div id="uploaded-thumbs-list"></div>
+                    <div class="rescan-row">
+                        <label for="rescan-engine">আবার স্ক্যানের ইঞ্জিন</label>
+                        <select id="rescan-engine" class="select select-sm"></select>
+                    </div>
+                    <p class="rescan-hint">একই ছবি আবার আপলোড না করেই স্ক্যান করা যায়। ফল মিললে ভরসা বাড়ে, না মিললে তিনবার স্ক্যানে ভোটে ঠিক হয়।</p>
                 </div>
 
                 <div class="upload-foot">
@@ -804,6 +824,26 @@
                     ডিফল্টে ফিরুন
                 </button>
                 <button id="save-grade-scale-btn" type="button" class="btn btn-primary">সেভ করুন</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= SCAN COMPARE MODAL ================= -->
+    <div id="scan-compare-modal" class="hidden modal" role="dialog" aria-modal="true" aria-labelledby="scan-cmp-title">
+        <div class="sheet" tabindex="-1">
+            <div class="sheet-h">
+                <div>
+                    <h3 id="scan-cmp-title">দুই স্ক্যানে ফল আলাদা</h3>
+                    <p id="scan-cmp-sub"></p>
+                </div>
+                <button id="close-scan-compare" type="button" class="icon-btn" aria-label="বন্ধ করুন">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+                </button>
+            </div>
+            <div id="scan-cmp-list" class="cmp-list"></div>
+            <div class="sheet-foot split">
+                <button id="scan-cmp-allnew" type="button" class="btn btn-ghost">সব নতুনটা নিন</button>
+                <button id="scan-cmp-apply" type="button" class="btn btn-primary">প্রয়োগ করুন</button>
             </div>
         </div>
     </div>
@@ -1842,11 +1882,11 @@ Each object MUST have these exact keys:
             return await tryDeepOCR();
         }
 
-        async function runHybridExtractionPipeline(dataUrl, base64, mimeType, onStatus, origDataUrl) {
+        async function runHybridExtractionPipeline(dataUrl, base64, mimeType, onStatus, origDataUrl, opts) {
             const orig = origDataUrl || dataUrl;
             const keyState = [keyGeminiInput, keyGroqInput, keyOpenrouterInput, keyOpenaiInput, keyClaudeInput].map(k => k.value.trim() ? 1 : 0).join('');
             const cacheKey = `${aiProviderSelect.value}|${keyState}|${eduSystem}|${hashString(orig)}`;
-            if (ocrResultCache.has(cacheKey)) {
+            if (!(opts && opts.fresh) && ocrResultCache.has(cacheKey)) {
                 const hit = ocrResultCache.get(cacheKey);
                 const rows = hit.rows.map(r => ({ ...r }));
                 rows.engine = hit.engine + ' (সংরক্ষিত ফল)';
@@ -1910,8 +1950,11 @@ Each object MUST have these exact keys:
 
                     if (rows.length > 0) {
                         if (rows.engine) enginesUsed.add(rows.engine);
+                        const ownImg = uploadedImages.find(u => u.hash === imgHash);
+                        if (ownImg) { ownImg.scans = [{ engine: rows.engine || '', rows: rows.map(r => ({ ...r })) }]; renderUploadedThumbs(); }
                         rows.forEach(r => {
                             const item = normalizeCourseItem(r, file.name);
+                            item.imgHash = imgHash;
                             coursesList.push(item);
                             totalAdded++;
                             if (item.gradeGuessed || item.creditGuessed) uncertainAdded++;
@@ -1936,6 +1979,10 @@ Each object MUST have these exact keys:
             }
         }
 
+        function scanSignature(rows) {
+            return (rows || []).map(r => `${String(r.courseCode || '').trim().toLowerCase()}|${(Number(r.credit) || 0).toFixed(2)}|${String(r.letterGrade || '').toUpperCase().replace(/\s+/g, '')}`).join(';');
+        }
+
         function renderUploadedThumbs() {
             if (uploadedImages.length === 0) {
                 uploadedThumbsWrap.classList.add('hidden');
@@ -1943,12 +1990,25 @@ Each object MUST have these exact keys:
                 return;
             }
             uploadedThumbsWrap.classList.remove('hidden');
-            uploadedThumbsList.innerHTML = uploadedImages.map((imgObj, idx) => `
-                <button type="button" data-idx="${idx}" class="thumb-preview-btn thumb" title="প্রিভিউ দেখুন">
-                    <img src="${imgObj.dataUrl}" alt="">
-                    <span>${escapeHtml(imgObj.name)}</span>
-                </button>
-            `).join('');
+            uploadedThumbsList.innerHTML = uploadedImages.map((imgObj, idx) => {
+                const n = (imgObj.scans || []).length;
+                const agree = n > 1 && imgObj.scans.every(sc => scanSignature(sc.rows) === scanSignature(imgObj.scans[0].rows));
+                const metaTxt = n === 0 ? 'স্ক্যান হয়নি' : n === 1 ? '১ বার স্ক্যান' : (agree ? `${n} বার স্ক্যান, একই ফল` : `${n} বার স্ক্যান, ফল আলাদা`);
+                const metaCls = n > 1 ? (agree ? 'ok' : 'warn') : '';
+                return `
+                <div class="thumb">
+                    <button type="button" data-idx="${idx}" class="thumb-preview-btn thumb-main" title="প্রিভিউ দেখুন">
+                        <img src="${imgObj.dataUrl}" alt="">
+                        <span class="thumb-text"><span class="thumb-name">${escapeHtml(imgObj.name)}</span><span class="thumb-meta ${metaCls}">${metaTxt}</span></span>
+                    </button>
+                    <button type="button" data-idx="${idx}" class="rescan-btn btn btn-soft btn-sm" title="একই ছবি আবার স্ক্যান করুন" aria-label="${escapeHtml(imgObj.name)} আবার স্ক্যান করুন">
+                        <svg class="i" viewBox="0 0 24 24"><path d="M20 11a8 8 0 10-2.3 5.7M20 4v7h-7"/></svg>
+                        আবার স্ক্যান
+                    </button>
+                </div>`;
+            }).join('');
+            uploadedThumbsList.querySelectorAll('.rescan-btn').forEach(b => b.addEventListener('click', () => window.rescanImage && window.rescanImage(Number(b.dataset.idx))));
+            if (window.buildRescanEngines) window.buildRescanEngines();
 
             uploadedThumbsList.querySelectorAll('.thumb-preview-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
@@ -2812,7 +2872,7 @@ Each object MUST have these exact keys:
             syncDock();
 
             // Modals: Esc to close, scroll lock, focus handling, Tab trap
-            const modals = ['ai-settings-modal', 'grade-scale-modal', 'image-lightbox-modal', 'card-name-modal']
+            const modals = ['ai-settings-modal', 'grade-scale-modal', 'image-lightbox-modal', 'card-name-modal', 'scan-compare-modal']
                 .map(id => document.getElementById(id));
             let lastFocus = null;
             modals.forEach(m => {
@@ -2820,6 +2880,7 @@ Each object MUST have these exact keys:
                     const open = !m.classList.contains('hidden');
                     if (open) {
                         lastFocus = document.activeElement;
+                        document.getElementById('toast').classList.remove('show');
                         setTimeout(() => { if (!m.contains(document.activeElement)) m.querySelector('.sheet').focus(); }, 80);
                     } else if (lastFocus && lastFocus.focus) {
                         lastFocus.focus(); lastFocus = null;
@@ -3010,6 +3071,188 @@ Each object MUST have these exact keys:
                 sync();
             });
             sync();
+        })();
+
+        // ================= RESCAN =================
+        (function rescanFeature() {
+            const sel = document.getElementById('rescan-engine');
+            const modal = document.getElementById('scan-compare-modal');
+            const listEl = document.getElementById('scan-cmp-list');
+            const subEl = document.getElementById('scan-cmp-sub');
+            const titleEl = document.getElementById('scan-cmp-title');
+            const applyBtn = document.getElementById('scan-cmp-apply');
+            const allNewBtn = document.getElementById('scan-cmp-allnew');
+            const LABELS = { ocrspace: 'OCR.Space', local: 'অফলাইন Tesseract', gemini: 'Gemini', groq: 'Groq', openrouter: 'OpenRouter', openai: 'GPT-4o', claude: 'Claude' };
+            const KEYS = { gemini: keyGeminiInput, groq: keyGroqInput, openrouter: keyOpenrouterInput, openai: keyOpenaiInput, claude: keyClaudeInput };
+
+            window.buildRescanEngines = function () {
+                const prev = sel.value || 'current';
+                sel.textContent = '';
+                const add = (v, t, dis) => { const o = document.createElement('option'); o.value = v; o.textContent = t; o.disabled = !!dis; sel.appendChild(o); };
+                add('current', 'বর্তমান ইঞ্জিন');
+                Object.keys(LABELS).forEach(v => {
+                    const missing = KEYS[v] && !KEYS[v].value.trim();
+                    add(v, LABELS[v] + (missing ? ' (কী নেই)' : ''), missing);
+                });
+                sel.value = [...sel.options].some(o => o.value === prev && !o.disabled) ? prev : 'current';
+            };
+            window.buildRescanEngines();
+
+            const gradeOf = r => String(r.letterGrade || '').toUpperCase().replace(/\s+/g, '');
+            const credOf = r => (Number(r.credit) || 0).toFixed(2);
+            const labelOf = (r, i) => String(r.courseCode || '').trim() || String(r.courseName || '').trim() || ('সারি ' + (i + 1));
+            const fmt = r => `${gradeOf(r) || '?'} (${credOf(r)})`;
+            const mapRows = (img) => {
+                const idxs = coursesList.map((c, i) => c.imgHash === img.hash ? i : -1).filter(i => i >= 0);
+                return idxs;
+            };
+
+            let pending = null;  // { img, a, b, idxs, choice[] }
+
+            function closeModal() { modal.classList.add('hidden'); pending = null; }
+            document.getElementById('close-scan-compare').addEventListener('click', closeModal);
+            modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+            function openCompare(img, a, b, diffs, idxs) {
+                pending = { img, a, b, idxs, diffs, choice: diffs.map(() => 'a') };
+                titleEl.textContent = 'দুই স্ক্যানে ফল আলাদা';
+                subEl.textContent = `${diffs.length}টি সারিতে পার্থক্য। ছবির সাথে মিলিয়ে সঠিকটি বেছে নিন, অথবা আরেকবার স্ক্যান করুন, তিন বারের ভোটে ঠিক হবে।`;
+                listEl.textContent = '';
+                diffs.forEach((k, di) => {
+                    const item = document.createElement('div'); item.className = 'cmp-item';
+                    const t = document.createElement('b'); t.textContent = labelOf(a[k], k); item.appendChild(t);
+                    const pick = document.createElement('div'); pick.className = 'cmp-pick';
+                    [['a', 'আগের স্ক্যান', a[k]], ['b', 'নতুন স্ক্যান', b[k]]].forEach(([key, name, row]) => {
+                        const btn = document.createElement('button'); btn.type = 'button';
+                        btn.className = key === 'a' ? 'active' : '';
+                        const small = document.createElement('small'); small.textContent = name;
+                        btn.appendChild(small); btn.appendChild(document.createTextNode(fmt(row)));
+                        btn.addEventListener('click', () => {
+                            pending.choice[di] = key;
+                            pick.querySelectorAll('button').forEach(x => x.classList.remove('active'));
+                            btn.classList.add('active');
+                        });
+                        pick.appendChild(btn);
+                    });
+                    item.appendChild(pick); listEl.appendChild(item);
+                });
+                allNewBtn.classList.remove('hidden'); applyBtn.textContent = 'প্রয়োগ করুন';
+                modal.classList.remove('hidden');
+            }
+
+            allNewBtn.addEventListener('click', () => {
+                if (!pending) return;
+                pending.choice = pending.choice.map(() => 'b');
+                listEl.querySelectorAll('.cmp-pick').forEach(p => { const bs = p.querySelectorAll('button'); bs[0].classList.remove('active'); bs[1].classList.add('active'); });
+            });
+
+            applyBtn.addEventListener('click', () => {
+                if (!pending) return;
+                if (pending.replaceAll) {
+                    const { img, b, idxs } = pending;
+                    const before = coursesList;
+                    const at = idxs.length ? idxs[0] : coursesList.length;
+                    const fresh = b.map(r => { const it = normalizeCourseItem(r, img.name); it.imgHash = img.hash; return it; });
+                    coursesList = coursesList.filter((_, i) => !idxs.includes(i));
+                    coursesList.splice(Math.min(at, coursesList.length), 0, ...fresh);
+                    closeModal(); recalculateAndRender();
+                    showToast('নতুন স্ক্যানের ফল দিয়ে প্রতিস্থাপন হয়েছে।', { label: 'পূর্বাবস্থায়', onClick: () => { coursesList = before; recalculateAndRender(); } });
+                    return;
+                }
+                const { diffs, b, idxs, choice } = pending;
+                let changed = 0;
+                diffs.forEach((k, di) => {
+                    if (choice[di] !== 'b') return;
+                    const c = coursesList[idxs[k]]; if (!c) return;
+                    const g = gradeOf(b[k]);
+                    if (getValidGradesList().includes(g)) c.letterGrade = g;
+                    if (!c.creditEdited && c.credit !== Number(b[k].credit) && Number(b[k].credit) > 0) c.credit = Number(b[k].credit);
+                    c.gradeEdited = true; c.gradeGuessed = false;
+                    changed++;
+                });
+                closeModal(); recalculateAndRender();
+                showToast(changed ? `${changed}টি সারি নতুন স্ক্যান অনুযায়ী বদলানো হয়েছে।` : 'আগের ফলই রাখা হয়েছে।');
+            });
+
+            function voteAcross(img) {
+                const n = img.scans[img.scans.length - 1].rows.length;
+                const group = img.scans.filter(sc => sc.rows.length === n);
+                if (group.length < 3) return false;
+                const idxs = mapRows(img);
+                if (idxs.length !== n) return false;
+                const valid = getValidGradesList();
+                let fixed = 0, unsure = 0;
+                for (let k = 0; k < n; k++) {
+                    const c = coursesList[idxs[k]];
+                    if (!c || c.gradeEdited) continue;
+                    const votes = {};
+                    group.forEach(sc => { const g = gradeOf(sc.rows[k]); if (valid.includes(g)) votes[g] = (votes[g] || 0) + 1; });
+                    const ranked = Object.entries(votes).sort((x, y) => y[1] - x[1]);
+                    if (!ranked.length) continue;
+                    const need = Math.floor(group.length / 2) + 1;
+                    if (ranked[0][1] >= need) {
+                        if (c.letterGrade !== ranked[0][0]) { c.letterGrade = ranked[0][0]; fixed++; }
+                        c.gradeGuessed = ranked.length > 1 ? c.gradeGuessed : false;
+                        if (ranked.length === 1) c.gradeGuessed = false;
+                    } else { c.gradeGuessed = true; unsure++; }
+                }
+                recalculateAndRender();
+                showToast(`${group.length} বারের স্ক্যানের ভোটে ${fixed}টি গ্রেড ঠিক করা হয়েছে` + (unsure ? `, ${unsure}টিতে মতভেদ থাকায় হলুদ রাখা হয়েছে।` : '।'));
+                return true;
+            }
+
+            window.rescanImage = async function (idx) {
+                const img = uploadedImages[idx];
+                if (!img) return;
+                if (uploadBusy) { showToast('আগের কাজ চলছে, একটু অপেক্ষা করুন।'); return; }
+                uploadBusy = true;
+                const savedProvider = aiProviderSelect.value;
+                ocrProgressWrap.classList.remove('hidden');
+                ocrProgressBar.style.width = '15%'; ocrProgressPct.textContent = '15%';
+                try {
+                    if (sel.value && sel.value !== 'current') aiProviderSelect.value = sel.value;
+                    const mime = img.dataUrl.slice(5, img.dataUrl.indexOf(';')) || 'image/png';
+                    const prep = await prepareImageForOcr(img.dataUrl, mime);
+                    const rows = await runHybridExtractionPipeline(prep.dataUrl, prep.base64, prep.mimeType, label => {
+                        ocrProgressLabel.innerHTML = `<span class="spinner"></span> (আবার স্ক্যান) ${label}`;
+                    }, img.dataUrl, { fresh: true });
+                    if (!rows.length) { showToast('এবার কোনো সারি পাওয়া যায়নি।'); return; }
+                    img.scans = img.scans || [];
+                    const prev = img.scans.length ? img.scans[img.scans.length - 1] : null;
+                    img.scans.push({ engine: rows.engine || '', rows: rows.map(r => ({ ...r })) });
+                    renderUploadedThumbs();
+                    const idxs = mapRows(img);
+                    if (!prev) { showToast('ফল সংরক্ষিত হয়েছে। এবার আবার স্ক্যান করলে তুলনা করা যাবে।'); return; }
+
+                    if (prev.rows.length !== rows.length) {
+                        pending = { img, a: prev.rows, b: rows, idxs, replaceAll: true };
+                        titleEl.textContent = 'সারির সংখ্যা আলাদা';
+                        subEl.textContent = `আগের স্ক্যানে ${prev.rows.length}টি, এবার ${rows.length}টি সারি এসেছে। ছবির সারির সংখ্যার সাথে মিলিয়ে দেখুন।`;
+                        listEl.textContent = '';
+                        allNewBtn.classList.add('hidden'); applyBtn.textContent = 'নতুন ফল দিয়ে প্রতিস্থাপন';
+                        modal.classList.remove('hidden');
+                        return;
+                    }
+                    const diffs = [];
+                    for (let k = 0; k < rows.length; k++) {
+                        if (gradeOf(prev.rows[k]) !== gradeOf(rows[k]) || credOf(prev.rows[k]) !== credOf(rows[k])) diffs.push(k);
+                    }
+                    if (diffs.length === 0) {
+                        showToast(`${img.scans.length} বার স্ক্যানেও একই ফল, ${rows.length}টি সারি পুরোপুরি মিলেছে।`);
+                        return;
+                    }
+                    if (img.scans.length >= 3 && voteAcross(img)) return;
+                    if (idxs.length !== rows.length) { showToast(`${diffs.length}টি সারিতে পার্থক্য আছে, কিন্তু টেবিলের সারি বদলানো থাকায় নিজে মিলিয়ে নিন।`); return; }
+                    openCompare(img, prev.rows, rows, diffs, idxs);
+                } catch (e) {
+                    showToast('আবার স্ক্যান করতে সমস্যা হয়েছে।');
+                } finally {
+                    aiProviderSelect.value = savedProvider;
+                    uploadBusy = false;
+                    ocrProgressBar.style.width = '100%'; ocrProgressPct.textContent = '100%';
+                    setTimeout(() => ocrProgressWrap.classList.add('hidden'), 600);
+                }
+            };
         })();
     </script>
 </body>
